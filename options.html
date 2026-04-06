@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简翻译设置</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div class="hero-brand">
+          <img class="hero-icon" src="assets/icons/icon-128.png" alt="极简翻译图标">
+          <div class="hero-copy">
+            <p class="eyebrow">极简翻译</p>
+            <h1>高级设置</h1>
+          </div>
+        </div>
+        <p>默认先尝试首选免费接口；如果首选免费接口在当前网络环境不可用，可自动回退到百度翻译或其他已启用翻译源。</p>
+      </section>
+
+      <section class="card">
+        <h2>基础设置</h2>
+        <div class="grid">
+          <label class="field">
+            <span>源语言</span>
+            <select id="sourceLanguage">
+              <option value="auto">自动识别</option>
+              <option value="en">English</option>
+              <option value="zh-CN">简体中文</option>
+              <option value="ja">日本语</option>
+              <option value="ko">한국어</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>目标语言</span>
+            <select id="targetLanguage">
+              <option value="zh-CN">简体中文</option>
+              <option value="en">English</option>
+              <option value="ja">日本语</option>
+              <option value="ko">한국어</option>
+              <option value="fr">Français</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>TTS 播报</span>
+            <select id="ttsEnabled">
+              <option value="true">启用</option>
+              <option value="false">禁用</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>英文语法提示</span>
+            <select id="grammarHintsEnabled">
+              <option value="true">启用</option>
+              <option value="false">禁用</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>网站生效范围</h2>
+        <p class="hint">
+          黑名单优先级高于白名单。域名规则支持 <code>example.com</code>，URL 规则支持 <code>https://example.com/docs/*</code>，每行一条。
+        </p>
+        <div class="grid">
+          <label class="field">
+            <span>默认策略</span>
+            <select id="siteAccessMode">
+              <option value="all">默认全部网页生效</option>
+              <option value="whitelist">仅白名单网页生效</option>
+            </select>
+          </label>
+          <label class="field field-full">
+            <span>白名单</span>
+            <textarea id="siteWhitelist" rows="5" placeholder="example.com&#10;https://developer.mozilla.org/*"></textarea>
+          </label>
+          <label class="field field-full">
+            <span>黑名单</span>
+            <textarea id="siteBlacklist" rows="5" placeholder="mail.example.com&#10;https://translate.example.com/*"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>语音设置</h2>
+        <p class="hint">如果默认音色听起来生硬，先试试“智能推荐”模式；它会优先选择系统里更自然、增强版的语音。你也可以手动改成任意系统音色，并微调语速和音高。</p>
+        <div class="grid">
+          <label class="field">
+            <span>推荐模式</span>
+            <select id="ttsVoiceMode">
+              <option value="smart_soft">智能推荐 · 柔和</option>
+              <option value="smart_natural">智能推荐 · 自然</option>
+              <option value="smart_clear">智能推荐 · 清晰</option>
+              <option value="smart_deep">智能推荐 · 沉稳</option>
+              <option value="manual">手动指定音色</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>手动音色</span>
+            <select id="ttsVoiceName">
+              <option value="">系统默认音色</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>语速 <strong id="ttsRateValue">0.90</strong></span>
+            <input id="ttsRate" type="range" min="0.7" max="1.2" step="0.01" value="0.90">
+          </label>
+
+          <label class="field">
+            <span>音高 <strong id="ttsPitchValue">0.98</strong></span>
+            <input id="ttsPitch" type="range" min="0.8" max="1.2" step="0.01" value="0.98">
+          </label>
+
+          <label class="field">
+            <span>音量 <strong id="ttsVolumeValue">1.00</strong></span>
+            <input id="ttsVolume" type="range" min="0.4" max="1.0" step="0.01" value="1.00">
+          </label>
+        </div>
+
+        <div class="preview">
+          <label class="field preview-field">
+            <span>试听文本</span>
+            <input id="ttsPreviewText" type="text" value="Hello, this is Minimal Translation.">
+          </label>
+          <button id="previewVoice" class="secondary" type="button">试听音色</button>
+          <button id="stopPreview" class="ghost" type="button">停止试听</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>翻译源</h2>
+        <div class="provider-list">
+          <label class="provider"><input id="provider_baidu" type="checkbox"> <span>百度翻译开放平台</span></label>
+          <label class="provider"><input id="provider_primary" type="checkbox"> <span>首选免费接口</span></label>
+          <label class="provider"><input id="provider_mymemory" type="checkbox"> <span>公共备用接口</span></label>
+          <label class="provider"><input id="provider_bing" type="checkbox"> <span>商业翻译接口</span></label>
+          <label class="provider"><input id="provider_libre" type="checkbox"> <span>自定义公共端点</span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>百度翻译开放平台</h2>
+        <p class="hint">
+          推荐中国大陆环境优先接入。开通“通用文本翻译 API”后，填写 AppID 与 AppKey 即可使用。
+        </p>
+        <div id="baiduStatus" class="provider-status" aria-live="polite">正在读取百度状态...</div>
+        <div class="grid">
+          <label class="field">
+            <span>AppID</span>
+            <input id="baiduAppId" type="text" placeholder="填入百度翻译开放平台 AppID">
+          </label>
+          <label class="field">
+            <span>AppKey</span>
+            <input id="baiduAppKey" type="password" placeholder="填入百度翻译开放平台 AppKey">
+          </label>
+          <label class="field">
+            <span>调用策略</span>
+            <select id="baiduFallbackOnly">
+              <option value="true">仅在前置翻译源失败时作为回退</option>
+              <option value="false">与其他翻译源一起参与请求</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>免费额度保护</span>
+            <select id="baiduFreeLimitEnabled">
+              <option value="true">启用，达到上限后当月自动停用</option>
+              <option value="false">禁用，由百度平台自行计费</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>月度字符上限</span>
+            <input id="baiduMonthlyCharacterLimit" type="number" min="1" step="1" placeholder="例如 50000">
+          </label>
+        </div>
+        <p class="hint">
+          建议保留“仅回退 + 免费额度保护”。这样首选免费接口正常可用时不会额外消耗百度字符数，达到月度上限后也会自动跳过百度。
+        </p>
+        <div class="inline-actions">
+          <button id="resetBaiduUsage" class="ghost" type="button">重置百度本月额度状态</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>商业翻译接口</h2>
+        <p class="hint">
+          如果你想启用商业翻译接口，请先创建对应的翻译资源，并选择免费 <strong>F0</strong> 定价层。
+          创建完成后，到资源页的 <strong>Keys and Endpoint</strong> 复制 Key、Region、Endpoint，再填到下面。
+        </p>
+        <p class="hint">
+          教程文档：<code>docs/azure-translator-f0-guide.md</code>
+        </p>
+        <div class="grid">
+          <label class="field">
+            <span>API Key</span>
+            <input id="microsoftApiKey" type="password" placeholder="填入 Keys and Endpoint 页面里的 KEY 1 或 KEY 2">
+          </label>
+          <label class="field">
+            <span>Region</span>
+            <input id="microsoftRegion" type="text" placeholder="填入资源页显示的 Region，例如 global 或 eastasia">
+          </label>
+          <label class="field">
+            <span>Endpoint</span>
+            <input id="microsoftEndpoint" type="url" placeholder="通常填写 https://api.cognitive.microsofttranslator.com">
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>自定义公共翻译端点</h2>
+        <label class="field">
+          <span>Endpoint</span>
+          <input id="libreEndpoint" type="url" placeholder="https://libretranslate.com/translate">
+        </label>
+      </section>
+
+      <section class="card">
+        <h2>英文语法提示</h2>
+        <p class="hint">
+          当前默认接入公共语法检测接口。它适合做轻量提示，不适合作为强一致的专业校对结果。
+        </p>
+      </section>
+
+      <div class="actions">
+        <button id="saveButton" class="primary">保存设置</button>
+        <span id="status" class="status"></span>
+      </div>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
