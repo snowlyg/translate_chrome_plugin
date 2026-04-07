@@ -2,7 +2,6 @@ const enabledInput = document.getElementById("enabled");
 const targetLanguageSelect = document.getElementById("targetLanguage");
 const ttsEnabledInput = document.getElementById("ttsEnabled");
 const grammarHintsEnabledInput = document.getElementById("grammarHintsEnabled");
-const resultDisplayModeSelect = document.getElementById("resultDisplayMode");
 const openOptionsButton = document.getElementById("openOptions");
 const statusNode = document.getElementById("status");
 const DEFAULT_THEME_COLOR = "#2563EB";
@@ -21,12 +20,10 @@ const I18N = {
     labelTargetLanguage: "目标语言",
     labelTtsEnabled: "启用 TTS 播报",
     labelGrammarHints: "启用语法提示",
-    labelResultDisplayMode: "结果展示方式",
     openOptions: "打开高级设置",
     saveSuccess: "设置已保存",
     saveError: "保存失败",
     loadError: "读取配置失败",
-    inlineMode: "页内模式",
     splitMode: "分隔模式"
   },
   en: {
@@ -43,12 +40,10 @@ const I18N = {
     labelTargetLanguage: "Target Language",
     labelTtsEnabled: "Enable TTS",
     labelGrammarHints: "Enable Grammar Hints",
-    labelResultDisplayMode: "Result Display Mode",
     openOptions: "Open Advanced Settings",
     saveSuccess: "Settings saved",
     saveError: "Save failed",
     loadError: "Failed to load settings",
-    inlineMode: "Inline Mode",
     splitMode: "Split Mode"
   }
 };
@@ -69,17 +64,12 @@ async function initialize() {
   targetLanguageSelect.value = settings.targetLanguage || "zh-CN";
   ttsEnabledInput.checked = Boolean(settings.ttsEnabled);
   grammarHintsEnabledInput.checked = Boolean(settings.grammarHintsEnabled);
-  resultDisplayModeSelect.value = settings.resultDisplayMode === "split" ? "split" : "inline";
-  syncHeroState();
+  syncHeroState(settings.resultDisplayMode === "split" ? "split" : "inline");
 
   enabledInput.addEventListener("change", persist);
   targetLanguageSelect.addEventListener("change", persist);
   ttsEnabledInput.addEventListener("change", persist);
   grammarHintsEnabledInput.addEventListener("change", () => {
-    syncHeroState();
-    void persist();
-  });
-  resultDisplayModeSelect.addEventListener("change", () => {
     syncHeroState();
     void persist();
   });
@@ -99,8 +89,7 @@ async function initialize() {
       syncHeroState();
     }
     if ("resultDisplayMode" in changes) {
-      resultDisplayModeSelect.value = changes.resultDisplayMode.newValue === "split" ? "split" : "inline";
-      syncHeroState();
+      syncHeroState(changes.resultDisplayMode.newValue === "split" ? "split" : "inline");
     }
   });
 }
@@ -112,8 +101,7 @@ async function persist() {
       enabled: enabledInput.checked,
       targetLanguage: targetLanguageSelect.value,
       ttsEnabled: ttsEnabledInput.checked,
-      grammarHintsEnabled: grammarHintsEnabledInput.checked,
-      resultDisplayMode: resultDisplayModeSelect.value
+      grammarHintsEnabled: grammarHintsEnabledInput.checked
     }
   });
 
@@ -136,21 +124,17 @@ function applyLanguage(language) {
   setText("labelTargetLanguage", copy.labelTargetLanguage);
   setText("labelTtsEnabled", copy.labelTtsEnabled);
   setText("labelGrammarHints", copy.labelGrammarHints);
-  setText("labelResultDisplayMode", copy.labelResultDisplayMode);
   setText("openOptions", copy.openOptions);
   syncHeroState();
-  const modeOptions = resultDisplayModeSelect.options;
-  if (modeOptions.length >= 2) {
-    modeOptions[0].textContent = copy.inlineMode;
-    modeOptions[1].textContent = copy.splitMode;
-  }
 }
 
-function syncHeroState() {
+function syncHeroState(mode) {
   const copy = I18N[document.documentElement.lang === "en" ? "en" : "zh-CN"];
+  const currentMode = mode || document.documentElement.dataset.popupDisplayMode || "inline";
+  document.documentElement.dataset.popupDisplayMode = currentMode;
   setText(
     "heroChipMode",
-    resultDisplayModeSelect.value === "split" ? copy.heroChipModeSplit : copy.heroChipModeInline
+    currentMode === "split" ? copy.heroChipModeSplit : copy.heroChipModeInline
   );
   setText(
     "heroChipGrammar",
@@ -158,7 +142,7 @@ function syncHeroState() {
   );
   setText(
     "heroSummary",
-    resultDisplayModeSelect.value === "split" ? copy.heroSummarySplit : copy.heroSummaryInline
+    currentMode === "split" ? copy.heroSummarySplit : copy.heroSummaryInline
   );
 }
 
