@@ -113,8 +113,11 @@ It is especially useful for:
 
 1. Open `chrome://extensions/`
 2. Enable `Developer mode`
-3. Click `Load unpacked`
+3. Click `Load unpacked` in the top-left area
 4. Select this project directory
+5. Confirm that `极简翻译` appears in the extension list
+
+If you are installing the extension manually for the first time, the key step is clicking the `Load unpacked` button on the Chrome extensions page.
 
 ## Usage
 

@@ -8,6 +8,9 @@ const DEFAULT_SETTINGS = {
   ttsRate: 0.9,
   ttsPitch: 0.98,
   ttsVolume: 1,
+  uiLanguage: "zh-CN",
+  resultDisplayMode: "inline",
+  themeColor: "#2563EB",
   siteAccessMode: "all",
   siteWhitelist: "",
   siteBlacklist: "",
@@ -515,11 +518,29 @@ function mergeSettings(settings) {
     siteAccessMode: settings.siteAccessMode === "whitelist" ? "whitelist" : "all",
     siteWhitelist: String(settings.siteWhitelist || ""),
     siteBlacklist: String(settings.siteBlacklist || ""),
+    themeColor: normalizeThemeColor(settings.themeColor || settings.themePreset),
     baiduFallbackOnly: settings.baiduFallbackOnly !== false,
     baiduFreeLimitEnabled: settings.baiduFreeLimitEnabled !== false,
     baiduMonthlyCharacterLimit: normalizeMonthlyCharacterLimit(settings.baiduMonthlyCharacterLimit),
     providerOrder
   };
+}
+
+function normalizeThemeColor(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  const legacyMap = {
+    ocean: "#2563EB",
+    forest: "#15803D",
+    sunset: "#EA580C",
+    rose: "#E11D48"
+  };
+  if (normalized.toLowerCase() in legacyMap) {
+    return legacyMap[normalized.toLowerCase()];
+  }
+  if (/^#[0-9A-F]{6}$/.test(normalized)) {
+    return normalized;
+  }
+  return DEFAULT_SETTINGS.themeColor;
 }
 
 function normalizeMonthlyCharacterLimit(value) {

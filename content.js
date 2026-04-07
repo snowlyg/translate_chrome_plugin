@@ -8,6 +8,7 @@ const DOCK_OPEN_WIDTH = 420;
 const DOCK_COLLAPSED_WIDTH = 52;
 const DOCK_LAYOUT_STORAGE_KEY = "dockLayout";
 const INLINE_TRANSLATION_ATTR = "data-st-inline-translation";
+const DEFAULT_THEME_COLOR = "#2563EB";
 let activeSelectionText = "";
 let dismissedSelectionText = "";
 let currentSpeech = null;
@@ -15,6 +16,7 @@ let dragState = null;
 let splitDragState = null;
 let currentAnchorRect = null;
 let lastImageContext = null;
+let currentResultDisplayMode = "inline";
 let dockAdjustedElements = [];
 let dockMutationObserver = null;
 let dockResyncTimer = null;
@@ -37,11 +39,19 @@ let grammarHintState = {
 };
 
 injectStyles();
+void loadThemePreset();
 void loadDockLayoutState();
 void refreshPageActivationState();
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "sync") {
     return;
+  }
+  if ("themeColor" in changes || "themePreset" in changes) {
+    applyThemeColor(changes.themeColor?.newValue || changes.themePreset?.newValue);
+  }
+  if ("resultDisplayMode" in changes) {
+    currentResultDisplayMode = changes.resultDisplayMode.newValue === "split" ? "split" : "inline";
+    handleResultDisplayModeChange();
   }
   if (!("enabled" in changes) && !("siteAccessMode" in changes) && !("siteWhitelist" in changes) && !("siteBlacklist" in changes)) {
     return;
@@ -412,9 +422,105 @@ function restoreViewportScroll(x, y) {
   });
 }
 
+async function loadThemePreset() {
+  try {
+    const settings = await chrome.storage.sync.get({ themeColor: DEFAULT_THEME_COLOR, themePreset: "" });
+    applyThemeColor(settings.themeColor || settings.themePreset);
+  } catch (_error) {
+    applyThemeColor(DEFAULT_THEME_COLOR);
+  }
+}
+
+function normalizeThemeColor(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  const legacyMap = {
+    ocean: "#2563EB",
+    forest: "#15803D",
+    sunset: "#EA580C",
+    rose: "#E11D48"
+  };
+  if (normalized.toLowerCase() in legacyMap) {
+    return legacyMap[normalized.toLowerCase()];
+  }
+  if (/^#[0-9A-F]{6}$/.test(normalized)) {
+    return normalized;
+  }
+  return DEFAULT_THEME_COLOR;
+}
+
+function hexToRgb(hexColor) {
+  const normalized = normalizeThemeColor(hexColor);
+  const value = normalized.slice(1);
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16)
+  };
+}
+
+function mixChannel(base, target, ratio) {
+  return Math.round(base + (target - base) * ratio);
+}
+
+function adjustColor(hexColor, ratio, target) {
+  const rgb = hexToRgb(hexColor);
+  const next = {
+    r: mixChannel(rgb.r, target, ratio),
+    g: mixChannel(rgb.g, target, ratio),
+    b: mixChannel(rgb.b, target, ratio)
+  };
+  return `#${next.r.toString(16).padStart(2, "0")}${next.g.toString(16).padStart(2, "0")}${next.b.toString(16).padStart(2, "0")}`;
+}
+
+function applyThemeColor(themeColor) {
+  const normalized = normalizeThemeColor(themeColor);
+  const rgb = hexToRgb(normalized);
+  const root = document.documentElement;
+  root.style.setProperty("--st-accent", normalized);
+  root.style.setProperty("--st-accent-strong", adjustColor(normalized, 0.18, 0));
+  root.style.setProperty("--st-accent-soft", adjustColor(normalized, 0.26, 255));
+  root.style.setProperty("--st-accent-rgb", `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+  root.style.setProperty("--st-accent-strong-rgb", `${mixChannel(rgb.r, 0, 0.18)}, ${mixChannel(rgb.g, 0, 0.18)}, ${mixChannel(rgb.b, 0, 0.18)}`);
+  root.style.setProperty("--st-accent-soft-rgb", `${mixChannel(rgb.r, 255, 0.26)}, ${mixChannel(rgb.g, 255, 0.26)}, ${mixChannel(rgb.b, 255, 0.26)}`);
+  root.style.setProperty("--st-accent-glow-rgb", `${mixChannel(rgb.r, 255, 0.74)}, ${mixChannel(rgb.g, 255, 0.74)}, ${mixChannel(rgb.b, 255, 0.74)}`);
+}
+
+function handleResultDisplayModeChange() {
+  const panel = getPanel();
+  const hint = document.getElementById(INPUT_HINT_ID);
+  if (currentResultDisplayMode === "inline") {
+    if (panel) {
+      removePanel();
+    }
+    if (hint && grammarHintState.target) {
+      positionInputGrammarHint(hint, grammarHintState.target);
+    } else {
+      clearDockLayout();
+    }
+    return;
+  }
+
+  if (panel) {
+    adjustPanelAfterContentChange(panel);
+    scheduleDockResync();
+  } else if (hint && grammarHintState.target) {
+    positionInputGrammarHint(hint, grammarHintState.target);
+    scheduleDockResync();
+  }
+}
+
 async function translateSelectionInline(rawText, range) {
   const text = String(rawText || "").trim();
   if (!text) {
+    return;
+  }
+
+  if (currentResultDisplayMode === "split") {
+    const rect = range?.getBoundingClientRect() || getViewportCenterRect();
+    await openPanel(text, rect, {
+      panelTitle: "划词翻译"
+    });
+    activeSelectionText = text;
     return;
   }
 
@@ -424,20 +530,41 @@ async function translateSelectionInline(rawText, range) {
   }
 
   closeTransientUi();
+  const translationNode = renderInlineTranslationState(targetBlock, {
+    title: "译文",
+    text: "翻译中...",
+    state: "loading"
+  });
 
   try {
     const response = await chrome.runtime.sendMessage({
-      type: "TRANSLATE_TEXT_SIMPLE",
+      type: "TRANSLATE_SELECTION",
       text
     });
-    if (!response?.ok || !response.data?.translation) {
+    const payload = response?.data;
+    const primary = payload?.results?.find((item) => item?.translation && !item.error);
+    if (!response?.ok || !primary?.translation) {
+      renderInlineTranslationState(targetBlock, {
+        title: "译文",
+        text: "翻译失败，请重试",
+        state: "error"
+      }, translationNode);
       return;
     }
 
-    insertInlineTranslation(targetBlock, response.data.translation, response.data.providerLabel);
+    renderInlineTranslationState(targetBlock, {
+      title: `译文${primary.providerLabel ? ` · ${primary.providerLabel}` : ""}`,
+      text: primary.translation,
+      state: "success",
+      extraHtml: renderInlineGrammarBlock(payload?.grammar || null)
+    }, translationNode);
     activeSelectionText = text;
   } catch (_error) {
-    // Ignore inline translation failure for selection-triggered mode.
+    renderInlineTranslationState(targetBlock, {
+      title: "译文",
+      text: "翻译失败，请重试",
+      state: "error"
+    }, translationNode);
   }
 }
 
@@ -498,20 +625,57 @@ function getInlineTranslationBlockText(node) {
     .trim();
 }
 
-function insertInlineTranslation(node, translation, providerLabel) {
-  const translationNode = node.nextElementSibling?.getAttribute?.(INLINE_TRANSLATION_ATTR) === "true"
+function getInlineTranslationNode(node) {
+  if (!(node instanceof Element)) {
+    return null;
+  }
+
+  return node.nextElementSibling?.getAttribute?.(INLINE_TRANSLATION_ATTR) === "true"
     ? node.nextElementSibling
-    : document.createElement("div");
+    : null;
+}
+
+function renderInlineTranslationState(node, payload, existingNode) {
+  const translationNode = existingNode || getInlineTranslationNode(node) || document.createElement("div");
   translationNode.className = "st-inline-translation";
   translationNode.setAttribute(INLINE_TRANSLATION_ATTR, "true");
+  translationNode.dataset.state = payload.state || "success";
   translationNode.innerHTML = `
-    <div class="st-inline-kicker">译文${providerLabel ? ` · ${escapeHtml(providerLabel)}` : ""}</div>
-    <div class="st-inline-text">${escapeHtml(translation)}</div>
+    <div class="st-inline-kicker">${escapeHtml(payload.title || "译文")}</div>
+    <div class="st-inline-text">${escapeHtml(payload.text || "")}</div>
+    ${payload.extraHtml || ""}
   `;
 
   if (translationNode !== node.nextElementSibling) {
     node.insertAdjacentElement("afterend", translationNode);
   }
+
+  return translationNode;
+}
+
+function renderInlineGrammarBlock(grammar) {
+  if (!grammar?.issues?.length) {
+    return `
+      <div class="st-inline-grammar">
+        <div class="st-inline-grammar-title">语法检查</div>
+        <div class="st-inline-grammar-empty">当前没有发现明显的英文语法问题。</div>
+      </div>
+    `;
+  }
+
+  const items = grammar.issues.slice(0, 3).map((issue) => `
+    <div class="st-inline-grammar-item">
+      <div class="st-inline-grammar-message">${escapeHtml(issue.shortMessage || issue.message || "Possible issue")}</div>
+      ${issue.replacements?.length ? `<div class="st-inline-grammar-fix">建议：${escapeHtml(issue.replacements.slice(0, 3).join(", "))}</div>` : ""}
+    </div>
+  `).join("");
+
+  return `
+    <div class="st-inline-grammar">
+      <div class="st-inline-grammar-title">语法检查</div>
+      <div class="st-inline-grammar-list">${items}</div>
+    </div>
+  `;
 }
 
 function resolveSiteLayoutMode(hostname) {
@@ -533,9 +697,11 @@ async function refreshPageActivationState() {
     const settings = response?.ok ? response.data : null;
     pageActivationState.ready = true;
     pageActivationState.enabled = isPageEnabledByRules(settings, window.location.href);
+    currentResultDisplayMode = settings?.resultDisplayMode === "split" ? "split" : "inline";
   } catch (_error) {
     pageActivationState.ready = true;
     pageActivationState.enabled = true;
+    currentResultDisplayMode = "inline";
   }
 
   if (!pageActivationState.enabled) {
@@ -802,15 +968,30 @@ function hideInputGrammarHint() {
 }
 
 function positionInputGrammarHint(hint, target) {
-  void target;
-  const width = clampDockWidth(DOCK_OPEN_WIDTH);
-  document.documentElement.dataset.stDocked = "true";
-  document.documentElement.style.setProperty("--st-dock-width", `${width}px`);
+  if (currentResultDisplayMode === "split") {
+    const width = clampDockWidth(DOCK_OPEN_WIDTH);
+    hint.dataset.displayMode = "split";
+    document.documentElement.dataset.stDocked = "true";
+    document.documentElement.style.setProperty("--st-dock-width", `${width}px`);
+    hint.style.width = `${width}px`;
+    hint.style.top = "0";
+    hint.style.right = "0";
+    hint.style.bottom = "0";
+    hint.style.left = "auto";
+    return;
+  }
+
+  const rect = target.getBoundingClientRect();
+  const width = Math.min(520, Math.max(320, rect.width));
+  hint.dataset.displayMode = "inline";
+  document.documentElement.dataset.stDocked = "false";
+  document.documentElement.style.removeProperty("--st-dock-width");
+  hint.style.position = "fixed";
   hint.style.width = `${width}px`;
-  hint.style.top = "0";
-  hint.style.right = "0";
-  hint.style.bottom = "0";
-  hint.style.left = "auto";
+  hint.style.left = `${Math.min(window.innerWidth - width - PANEL_EDGE, Math.max(PANEL_EDGE, rect.left))}px`;
+  hint.style.top = `${Math.min(window.innerHeight - 220, rect.bottom + 10)}px`;
+  hint.style.right = "auto";
+  hint.style.bottom = "auto";
 }
 
 function getEditableText(target) {
@@ -1684,6 +1865,11 @@ function disconnectDockMutationObserver() {
 }
 
 function scheduleDockResync() {
+  if (currentResultDisplayMode !== "split") {
+    clearDockLayout();
+    return;
+  }
+
   if (dockResyncTimer) {
     window.clearTimeout(dockResyncTimer);
   }
@@ -1920,6 +2106,15 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
+    :root {
+      --st-accent: #2563eb;
+      --st-accent-strong: #1d4ed8;
+      --st-accent-soft: #60a5fa;
+      --st-accent-rgb: 37, 99, 235;
+      --st-accent-strong-rgb: 29, 78, 216;
+      --st-accent-soft-rgb: 96, 165, 250;
+      --st-accent-glow-rgb: 191, 219, 254;
+    }
     html[data-st-docked="true"],
     html[data-st-docked="true"] body {
       width: calc(100vw - var(--st-dock-width, 0px)) !important;
@@ -1944,7 +2139,7 @@ function injectStyles() {
       border-right: 0;
       border-bottom: 0;
       background:
-        radial-gradient(circle at top right, rgba(191, 219, 254, 0.28), transparent 30%),
+        radial-gradient(circle at top right, rgba(var(--st-accent-glow-rgb), 0.28), transparent 30%),
         linear-gradient(180deg, rgba(252, 253, 255, 0.99) 0%, rgba(255, 255, 255, 0.99) 100%);
       box-shadow:
         -14px 0 36px rgba(15, 23, 42, 0.08);
@@ -2000,7 +2195,7 @@ function injectStyles() {
       height: 18px;
       border-radius: 5px;
       flex-shrink: 0;
-      box-shadow: 0 6px 12px rgba(37, 99, 235, 0.16);
+      box-shadow: 0 6px 12px rgba(var(--st-accent-rgb), 0.16);
     }
     #${PANEL_ID} .st-head-actions {
       display: flex;
@@ -2112,7 +2307,7 @@ function injectStyles() {
     }
     #${PANEL_ID} .st-divider:hover::before,
     #${PANEL_ID}.resizing .st-divider::before {
-      background: rgba(59, 130, 246, 0.65);
+      background: rgba(var(--st-accent-rgb), 0.65);
     }
     #${PANEL_ID}[data-pane-state="closed"] .st-divider {
       display: none;
@@ -2172,8 +2367,8 @@ function injectStyles() {
     }
     #${PANEL_ID} .st-icon-action:hover {
       background: #f8fbff;
-      color: #1e40af;
-      border-color: rgba(191, 219, 254, 0.95);
+      color: var(--st-accent-strong);
+      border-color: rgba(var(--st-accent-glow-rgb), 0.95);
       opacity: 1;
     }
     #${PANEL_ID} .st-icon-action:active {
@@ -2181,14 +2376,14 @@ function injectStyles() {
     }
     #${PANEL_ID} .st-icon-action.active {
       background: #eff6ff;
-      color: #1e40af;
-      border-color: rgba(147, 197, 253, 0.95);
+      color: var(--st-accent-strong);
+      border-color: rgba(var(--st-accent-soft-rgb), 0.95);
       opacity: 1;
     }
     #${PANEL_ID} .st-secondary-action {
-      border: 1px solid rgba(191, 219, 254, 0.9);
+      border: 1px solid rgba(var(--st-accent-glow-rgb), 0.9);
       background: rgba(239, 246, 255, 0.9);
-      color: #1d4ed8;
+      color: var(--st-accent-strong);
       border-radius: 999px;
       padding: 7px 12px;
       font-size: 12px;
@@ -2198,8 +2393,8 @@ function injectStyles() {
     }
     #${PANEL_ID} .st-secondary-action:hover {
       background: #dbeafe;
-      border-color: rgba(96, 165, 250, 0.95);
-      color: #1e40af;
+      border-color: rgba(var(--st-accent-soft-rgb), 0.95);
+      color: var(--st-accent-strong);
     }
     #${PANEL_ID} .st-tab {
       border: 1px solid transparent;
@@ -2212,9 +2407,9 @@ function injectStyles() {
       line-height: 1.2;
     }
     #${PANEL_ID} .st-tab.active {
-      border-color: rgba(191, 219, 254, 0.92);
+      border-color: rgba(var(--st-accent-glow-rgb), 0.92);
       background: rgba(239, 246, 255, 0.98);
-      color: #1e40af;
+      color: var(--st-accent-strong);
       box-shadow: none;
     }
     #${PANEL_ID} .st-translation {
@@ -2282,7 +2477,7 @@ function injectStyles() {
     #${PANEL_ID} .st-grammar-title::before {
       content: "✓";
       margin-right: 6px;
-      color: #60a5fa;
+      color: var(--st-accent-soft);
     }
     #${PANEL_ID} .st-grammar-list {
       display: grid;
@@ -2392,11 +2587,19 @@ function injectStyles() {
     .st-inline-translation {
       margin: 6px 0 12px;
       padding: 9px 12px 10px;
-      border-left: 3px solid rgba(37, 99, 235, 0.62);
+      border-left: 3px solid rgba(var(--st-accent-rgb), 0.62);
       background: linear-gradient(180deg, rgba(239, 246, 255, 0.56) 0%, rgba(248, 250, 252, 0.78) 100%);
       border-radius: 0 10px 10px 0;
       color: #1f2937;
       font: 14px/1.8 "SF Pro Text", "PingFang SC", "Noto Sans SC", sans-serif;
+    }
+    .st-inline-translation[data-state="loading"] {
+      border-left-color: rgba(var(--st-accent-rgb), 0.45);
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.4) 0%, rgba(248, 250, 252, 0.94) 100%);
+    }
+    .st-inline-translation[data-state="error"] {
+      border-left-color: rgba(220, 38, 38, 0.42);
+      background: linear-gradient(180deg, rgba(254, 242, 242, 0.8) 0%, rgba(248, 250, 252, 0.96) 100%);
     }
     .st-inline-kicker {
       margin-bottom: 4px;
@@ -2404,12 +2607,59 @@ function injectStyles() {
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #2563eb;
+      color: var(--st-accent);
+    }
+    .st-inline-translation[data-state="loading"] .st-inline-kicker {
+      color: var(--st-accent);
+    }
+    .st-inline-translation[data-state="error"] .st-inline-kicker {
+      color: #dc2626;
     }
     .st-inline-text {
       white-space: pre-wrap;
       word-break: break-word;
       color: #334155;
+    }
+    .st-inline-grammar {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(226, 232, 240, 0.92);
+    }
+    .st-inline-grammar-title {
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .st-inline-grammar-list {
+      display: grid;
+      gap: 8px;
+    }
+    .st-inline-grammar-item {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(226, 232, 240, 0.92);
+    }
+    .st-inline-grammar-message {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e3a8a;
+    }
+    .st-inline-grammar-fix,
+    .st-inline-grammar-empty {
+      margin-top: 4px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #475569;
+    }
+    .st-inline-translation[data-state="loading"] .st-inline-text {
+      color: #64748b;
+    }
+    .st-inline-translation[data-state="error"] .st-inline-text {
+      color: #991b1b;
     }
     #${INPUT_HINT_ID} {
       position: fixed;
@@ -2421,10 +2671,22 @@ function injectStyles() {
       padding: 18px 18px 16px;
       overflow: auto;
       background:
-        radial-gradient(circle at top right, rgba(191, 219, 254, 0.24), transparent 30%),
+        radial-gradient(circle at top right, rgba(var(--st-accent-glow-rgb), 0.24), transparent 30%),
         linear-gradient(180deg, rgba(252, 253, 255, 0.99) 0%, rgba(255, 255, 255, 0.99) 100%);
       border-left: 1px solid rgba(226, 232, 240, 0.95);
       box-shadow: -14px 0 36px rgba(15, 23, 42, 0.08);
+    }
+    #${INPUT_HINT_ID}[data-display-mode="inline"] {
+      top: auto;
+      right: auto;
+      bottom: auto;
+      width: min(520px, calc(100vw - 24px));
+      padding: 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      box-shadow:
+        0 20px 48px rgba(15, 23, 42, 0.14),
+        0 2px 10px rgba(15, 23, 42, 0.06);
     }
     #${INPUT_HINT_ID} .st-input-hint-card {
       padding: 0;
@@ -2441,12 +2703,12 @@ function injectStyles() {
       height: 18px;
       border-radius: 5px;
       flex-shrink: 0;
-      box-shadow: 0 6px 12px rgba(37, 99, 235, 0.16);
+      box-shadow: 0 6px 12px rgba(var(--st-accent-rgb), 0.16);
     }
     #${INPUT_HINT_ID} .st-input-status {
       font-size: 12px;
       font-weight: 600;
-      color: #1d4ed8;
+      color: var(--st-accent-strong);
     }
     #${INPUT_HINT_ID} .st-input-status.is-clean {
       color: #15803d;
@@ -2494,10 +2756,10 @@ function injectStyles() {
       flex-shrink: 0;
       width: 36px;
       height: 36px;
-      border: 1px solid rgba(191, 219, 254, 0.96);
+      border: 1px solid rgba(var(--st-accent-glow-rgb), 0.96);
       border-radius: 10px;
       background: #eff6ff;
-      color: #2563eb;
+      color: var(--st-accent);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -2509,7 +2771,7 @@ function injectStyles() {
     }
     #${INPUT_HINT_ID} .st-input-copy:hover {
       background: #dbeafe;
-      color: #1d4ed8;
+      color: var(--st-accent-strong);
     }
     #${INPUT_HINT_ID} .st-input-copy.copied {
       background: #dcfce7;

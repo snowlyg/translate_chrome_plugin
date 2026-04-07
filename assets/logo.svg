@@ -1,5 +1,21 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" fill="#2563EB"/>
-  <path d="M118 188H278V146L394 232L278 318V276H118V188Z" fill="white"/>
-  <path d="M394 324H234V366L118 280L234 194V236H394V324Z" fill="white"/>
+<svg width="1120" height="320" viewBox="0 0 1120 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1120" height="320" rx="40" fill="#F7F9FC"/>
+  <rect x="56" y="56" width="208" height="208" rx="40" fill="#2F343D"/>
+  <g transform="translate(160 160) rotate(-45)">
+    <rect x="-62" y="-28" width="112" height="56" rx="18" fill="#050608"/>
+    <rect x="4" y="-28" width="112" height="56" rx="18" fill="#2F6BFF"/>
+    <rect x="4" y="-28" width="112" height="56" rx="18" fill="url(#paint0_linear_201_8)" fill-opacity="0.92"/>
+  </g>
+  <g transform="translate(330 88)">
+    <text x="0" y="72" fill="#111827" font-size="68" font-weight="700" font-family="Avenir Next, Segoe UI, Arial, sans-serif" letter-spacing="-1.8">极简翻译</text>
+    <text x="0" y="118" fill="#6B7280" font-size="26" font-weight="600" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Minimal Translate Plugin</text>
+    <rect x="0" y="154" width="176" height="42" rx="21" fill="#E7EEFF"/>
+    <text x="24" y="181" fill="#2F6BFF" font-size="18" font-weight="700" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Default Blue</text>
+  </g>
+  <defs>
+    <linearGradient id="paint0_linear_201_8" x1="60" y1="-28" x2="60" y2="28" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4A85FF"/>
+      <stop offset="1" stop-color="#2F6BFF"/>
+    </linearGradient>
+  </defs>
 </svg>

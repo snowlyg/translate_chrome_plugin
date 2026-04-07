@@ -9,23 +9,33 @@
   <body>
     <main class="shell">
       <section class="hero">
-        <div class="brand">
-          <img class="brand-icon" src="assets/icons/icon-48.png" alt="极简翻译图标">
-          <div class="brand-copy">
-            <p class="eyebrow">极简翻译</p>
-            <h1>网页划词翻译</h1>
+        <div class="hero-card">
+          <div class="brand">
+            <img class="brand-icon" src="assets/icon.svg" alt="极简翻译图标">
+            <div class="brand-copy">
+              <p id="heroEyebrow" class="eyebrow">Translate Plugin</p>
+              <h1 id="heroTitle">网页划词翻译</h1>
+            </div>
           </div>
+          <div class="hero-status-row" aria-hidden="true">
+            <span id="heroTabPrimary" class="hero-status-item">Translating</span>
+            <span id="heroTabSecondary" class="hero-status-item">Grammar</span>
+          </div>
+          <div class="hero-meta-row" aria-hidden="true">
+            <span id="heroChipMode" class="hero-meta-item">Inline first</span>
+            <span id="heroChipGrammar" class="hero-meta-item">Grammar on</span>
+          </div>
+          <p id="heroSummary" class="summary">默认页内显示翻译与语法提示。</p>
         </div>
-        <p class="summary">选中单词或句子后，直接调用多个翻译源返回结果。</p>
       </section>
 
       <label class="switch">
-        <span>启用划词翻译</span>
+        <span id="labelEnabled">启用划词翻译</span>
         <input id="enabled" type="checkbox">
       </label>
 
       <label class="field">
-        <span>目标语言</span>
+        <span id="labelTargetLanguage">目标语言</span>
         <select id="targetLanguage">
           <option value="zh-CN">简体中文</option>
           <option value="en">English</option>
@@ -36,8 +46,21 @@
       </label>
 
       <label class="switch">
-        <span>启用 TTS 播报</span>
+        <span id="labelTtsEnabled">启用 TTS 播报</span>
         <input id="ttsEnabled" type="checkbox">
+      </label>
+
+      <label class="switch">
+        <span id="labelGrammarHints">启用语法提示</span>
+        <input id="grammarHintsEnabled" type="checkbox">
+      </label>
+
+      <label class="field">
+        <span id="labelResultDisplayMode">结果展示方式</span>
+        <select id="resultDisplayMode">
+          <option value="inline">页内模式</option>
+          <option value="split">分隔模式</option>
+        </select>
       </label>
 
       <button id="openOptions" class="primary">打开高级设置</button>
