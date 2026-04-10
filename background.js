@@ -36,6 +36,7 @@ const DEFAULT_SETTINGS = {
   grammarEndpoint: "https://api.languagetool.org/v2/check"
 };
 const LEGACY_PRIMARY_PROVIDER = ["g", "oogle"].join("");
+const CONTENT_SCRIPT_FILES = ["content.js"];
 
 chrome.runtime.onInstalled.addListener(async () => {
   const current = await chrome.storage.sync.get(DEFAULT_SETTINGS);
@@ -63,19 +64,80 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 
   if (info.menuItemId === "translate-selection" && info.selectionText) {
-    await chrome.tabs.sendMessage(tab.id, {
-      type: "OPEN_TRANSLATION_PANEL",
-      text: info.selectionText
-    });
+    try {
+      await dispatchMessageToTab(tab, {
+        type: "OPEN_TRANSLATION_PANEL",
+        text: info.selectionText
+      });
+    } catch (error) {
+      console.warn("右键划词翻译触发失败", error);
+    }
   }
 
   if (info.menuItemId === "translate-image" && info.srcUrl) {
-    await chrome.tabs.sendMessage(tab.id, {
-      type: "OPEN_IMAGE_TRANSLATION_PANEL",
-      imageUrl: info.srcUrl
-    });
+    try {
+      await dispatchMessageToTab(tab, {
+        type: "OPEN_IMAGE_TRANSLATION_PANEL",
+        imageUrl: info.srcUrl
+      });
+    } catch (error) {
+      console.warn("右键图片翻译触发失败", error);
+    }
   }
 });
+
+async function dispatchMessageToTab(tab, message) {
+  if (!tab?.id) {
+    throw new Error("目标标签页不存在");
+  }
+
+  if (!canInjectContentScript(tab.url)) {
+    throw new Error("当前页面不支持插件注入");
+  }
+
+  try {
+    return await chrome.tabs.sendMessage(tab.id, message);
+  } catch (error) {
+    if (!isMissingReceiverError(error)) {
+      throw error;
+    }
+
+    await ensureContentScriptInjected(tab.id);
+    return chrome.tabs.sendMessage(tab.id, message);
+  }
+}
+
+function canInjectContentScript(rawUrl) {
+  const url = String(rawUrl || "").trim();
+  if (!url) {
+    return false;
+  }
+
+  const blockedPrefixes = [
+    "chrome://",
+    "chrome-extension://",
+    "edge://",
+    "about:",
+    "moz-extension://",
+    "view-source:"
+  ];
+  if (blockedPrefixes.some((prefix) => url.startsWith(prefix))) {
+    return false;
+  }
+
+  return !url.startsWith("https://chrome.google.com/webstore");
+}
+
+function isMissingReceiverError(error) {
+  return /Receiving end does not exist|Could not establish connection/i.test(String(error?.message || error || ""));
+}
+
+async function ensureContentScriptInjected(tabId) {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: CONTENT_SCRIPT_FILES
+  });
+}
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "TRANSLATE_SELECTION") {

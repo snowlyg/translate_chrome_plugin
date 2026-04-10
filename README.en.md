@@ -33,10 +33,10 @@ It is especially useful for:
 
 ## Features
 
-- Translate selected words and sentences directly under the related reading block on the page
+- Translate selected words and sentences directly under the related reading block on the page, with inline voice playback
 - Aggregate results from multiple translation providers
 - Built-in TTS playback with configurable voice style, rate, pitch, and volume
-- English word phonetics, parts of speech, definitions, examples, and synonyms
+- English word phonetics, parts of speech, definitions, examples, and synonyms via the inline details entry
 - English grammar hints for sentence selections
 - Right-click image OCR translation for text inside images
 - Whitelist and blacklist controls by domain or URL pattern
@@ -124,7 +124,7 @@ If you are installing the extension manually for the first time, the key step is
 1. Open any webpage
 2. Select a word or sentence
 3. A translated block is inserted directly below the related reading block
-4. If the selection is an English word, dictionary annotations and speech features remain available
+4. If the selection is an English word, use the inline dictionary entry to expand annotations while keeping speech playback available
 5. Right-click an image and choose `翻译图片文字` to OCR and translate the text in the image
 6. Use the advanced settings page for provider fallback rules, voice tuning, and other detailed controls
 

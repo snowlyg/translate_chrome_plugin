@@ -12,6 +12,7 @@ const DEFAULT_THEME_COLOR = "#2563EB";
 let activeSelectionText = "";
 let dismissedSelectionText = "";
 let currentSpeech = null;
+let currentSpeechHost = null;
 let dragState = null;
 let splitDragState = null;
 let currentAnchorRect = null;
@@ -556,8 +557,9 @@ async function translateSelectionInline(rawText, range) {
       title: `译文${primary.providerLabel ? ` · ${primary.providerLabel}` : ""}`,
       text: primary.translation,
       state: "success",
-      extraHtml: renderInlineGrammarBlock(payload?.grammar || null)
+      payload
     }, translationNode);
+    bindInlineTranslationActions(translationNode, payload);
     activeSelectionText = text;
   } catch (_error) {
     renderInlineTranslationState(targetBlock, {
@@ -640,10 +642,16 @@ function renderInlineTranslationState(node, payload, existingNode) {
   translationNode.className = "st-inline-translation";
   translationNode.setAttribute(INLINE_TRANSLATION_ATTR, "true");
   translationNode.dataset.state = payload.state || "success";
+  const details = payload.payload || null;
+  const extraHtml = payload.extraHtml || [
+    renderInlineActionBar(details),
+    renderInlineGrammarBlock(details?.grammar || null),
+    renderInlineDictionaryDetails(details?.dictionary || null)
+  ].filter(Boolean).join("");
   translationNode.innerHTML = `
     <div class="st-inline-kicker">${escapeHtml(payload.title || "译文")}</div>
     <div class="st-inline-text">${escapeHtml(payload.text || "")}</div>
-    ${payload.extraHtml || ""}
+    ${extraHtml}
   `;
 
   if (translationNode !== node.nextElementSibling) {
@@ -651,6 +659,34 @@ function renderInlineTranslationState(node, payload, existingNode) {
   }
 
   return translationNode;
+}
+
+function renderInlineActionBar(payload) {
+  if (!payload || (payload.ttsEnabled !== true && !payload.dictionary)) {
+    return "";
+  }
+
+  const actions = [];
+  if (payload.ttsEnabled) {
+    actions.push(`
+      <button class="st-inline-icon-action" data-action="play-inline" type="button" aria-label="播放原文" title="播放原文">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 10.5V13.5H8.4L12.8 17V7L8.4 10.5H5Z" fill="currentColor"/>
+          <path d="M15.2 9.2C16.4 10 17.1 11.2 17.1 12.5C17.1 13.8 16.4 15 15.2 15.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M17 6.7C19 8.1 20.2 10.2 20.2 12.5C20.2 14.8 19 16.9 17 18.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    `);
+  }
+  if (payload.dictionary) {
+    actions.push(`
+      <button class="st-inline-secondary-action" data-action="toggle-dictionary" type="button" aria-expanded="false">
+        查看词典
+      </button>
+    `);
+  }
+
+  return `<div class="st-inline-actions">${actions.join("")}</div>`;
 }
 
 function renderInlineGrammarBlock(grammar) {
@@ -676,6 +712,68 @@ function renderInlineGrammarBlock(grammar) {
       <div class="st-inline-grammar-list">${items}</div>
     </div>
   `;
+}
+
+function renderInlineDictionaryDetails(dictionary) {
+  if (!dictionary) {
+    return "";
+  }
+
+  const phonetics = dictionary.phonetics?.length
+    ? `<div class="st-inline-phonetics">${dictionary.phonetics
+        .slice(0, 3)
+        .map((item) => `<span class="st-inline-chip">${escapeHtml(item.text || item.audio || "")}</span>`)
+        .join("")}</div>`
+    : "";
+
+  const meanings = dictionary.meanings?.length
+    ? `<div class="st-inline-dictionary-list">${dictionary.meanings.slice(0, 3).map((meaning) => `
+        <section class="st-inline-dictionary-item">
+          <div class="st-inline-pos">${escapeHtml(meaning.partOfSpeech || "meaning")}</div>
+          ${(meaning.definitions || []).slice(0, 2).map((definition) => `
+            <div class="st-inline-definition">${escapeHtml(definition.definition || "")}</div>
+            ${definition.example ? `<div class="st-inline-example">例句：${escapeHtml(definition.example)}</div>` : ""}
+          `).join("")}
+        </section>
+      `).join("")}</div>`
+    : `<div class="st-inline-dictionary-empty">当前没有可展示的词典释义。</div>`;
+
+  return `
+    <div class="st-inline-dictionary" data-role="inline-dictionary" hidden>
+      <div class="st-inline-dictionary-title">词典注释 · ${escapeHtml(dictionary.word || "")}</div>
+      ${phonetics}
+      ${meanings}
+    </div>
+  `;
+}
+
+function bindInlineTranslationActions(node, payload) {
+  if (!(node instanceof Element) || !payload) {
+    return;
+  }
+
+  node.querySelector("[data-action='play-inline']")?.addEventListener("click", async () => {
+    const playButton = node.querySelector("[data-action='play-inline']");
+    if (playButton?.classList.contains("active")) {
+      stopSpeech();
+      return;
+    }
+    await playSelection(node, payload);
+  });
+
+  node.querySelector("[data-action='toggle-dictionary']")?.addEventListener("click", () => {
+    const details = node.querySelector("[data-role='inline-dictionary']");
+    const button = node.querySelector("[data-action='toggle-dictionary']");
+    if (!(details instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const nextExpanded = details.hidden;
+    details.hidden = !nextExpanded;
+    button.textContent = nextExpanded ? "收起词典" : "查看词典";
+    button.setAttribute("aria-expanded", nextExpanded ? "true" : "false");
+    button.classList.toggle("expanded", nextExpanded);
+  });
 }
 
 function resolveSiteLayoutMode(hostname) {
@@ -1889,10 +1987,10 @@ function scheduleDockResync() {
   }, 120);
 }
 
-async function playSelection(panel, payload) {
+async function playSelection(host, payload) {
   stopSpeech();
 
-  const utterance = new SpeechSynthesisUtterance(activeSelectionText);
+  const utterance = new SpeechSynthesisUtterance(payload?.text || activeSelectionText);
   const primary = (payload.results || []).find((item) => !item.error) || payload.results?.[0];
   const lang = normalizeSpeechLanguage(primary?.detectedLanguage || "en");
   const voice = await resolveVoice(payload.ttsVoiceName, lang, payload.ttsVoiceMode || "smart_soft");
@@ -1905,22 +2003,45 @@ async function playSelection(panel, payload) {
     utterance.voice = voice;
   }
 
-  utterance.onend = () => updateSpeechState(panel, false);
-  utterance.onerror = () => updateSpeechState(panel, false);
+  utterance.onend = () => {
+    if (currentSpeech === utterance) {
+      updateSpeechState(host, false);
+      currentSpeech = null;
+      currentSpeechHost = null;
+    }
+  };
+  utterance.onerror = () => {
+    if (currentSpeech === utterance) {
+      updateSpeechState(host, false);
+      currentSpeech = null;
+      currentSpeechHost = null;
+    }
+  };
   currentSpeech = utterance;
-  updateSpeechState(panel, true);
+  currentSpeechHost = host instanceof Element ? host : null;
+  updateSpeechState(host, true);
   window.speechSynthesis.speak(utterance);
 }
 
 function stopSpeech() {
+  if (currentSpeechHost) {
+    updateSpeechState(currentSpeechHost, false);
+  }
   if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
     window.speechSynthesis.cancel();
   }
   currentSpeech = null;
+  currentSpeechHost = null;
 }
 
-function updateSpeechState(panel, isPlaying) {
-  panel.querySelector("[data-action='play']")?.classList.toggle("active", isPlaying);
+function updateSpeechState(host, isPlaying) {
+  if (!(host instanceof Element)) {
+    return;
+  }
+
+  host.querySelectorAll("[data-action='play'], [data-action='play-inline']").forEach((button) => {
+    button.classList.toggle("active", isPlaying);
+  });
 }
 
 function loadVoices() {
@@ -2620,6 +2741,62 @@ function injectStyles() {
       word-break: break-word;
       color: #334155;
     }
+    .st-inline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .st-inline-icon-action {
+      border: 1px solid rgba(226, 232, 240, 0.96);
+      background: rgba(255, 255, 255, 0.9);
+      color: #475569;
+      border-radius: 999px;
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease, transform 120ms ease;
+    }
+    .st-inline-icon-action svg {
+      width: 16px;
+      height: 16px;
+    }
+    .st-inline-icon-action:hover {
+      background: #f8fbff;
+      color: var(--st-accent-strong);
+      border-color: rgba(var(--st-accent-glow-rgb), 0.95);
+    }
+    .st-inline-icon-action:active {
+      transform: translateY(1px);
+    }
+    .st-inline-icon-action.active {
+      background: #eff6ff;
+      color: var(--st-accent-strong);
+      border-color: rgba(var(--st-accent-soft-rgb), 0.95);
+    }
+    .st-inline-secondary-action {
+      border: 1px solid rgba(var(--st-accent-glow-rgb), 0.9);
+      background: rgba(239, 246, 255, 0.9);
+      color: var(--st-accent-strong);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .st-inline-secondary-action:hover {
+      background: #dbeafe;
+      border-color: rgba(var(--st-accent-soft-rgb), 0.95);
+    }
+    .st-inline-secondary-action.expanded {
+      background: rgba(219, 234, 254, 0.95);
+    }
     .st-inline-grammar {
       margin-top: 12px;
       padding-top: 12px;
@@ -2653,6 +2830,63 @@ function injectStyles() {
       margin-top: 4px;
       font-size: 12px;
       line-height: 1.6;
+      color: #475569;
+    }
+    .st-inline-dictionary {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(226, 232, 240, 0.92);
+    }
+    .st-inline-dictionary-title {
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .st-inline-phonetics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .st-inline-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      color: #64748b;
+      font-size: 12px;
+    }
+    .st-inline-dictionary-list {
+      display: grid;
+      gap: 10px;
+    }
+    .st-inline-dictionary-item {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(226, 232, 240, 0.92);
+    }
+    .st-inline-pos {
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: #475569;
+      text-transform: lowercase;
+    }
+    .st-inline-definition,
+    .st-inline-example,
+    .st-inline-dictionary-empty {
+      font-size: 12px;
+      line-height: 1.7;
+      color: #334155;
+    }
+    .st-inline-example {
+      margin-top: 5px;
       color: #475569;
     }
     .st-inline-translation[data-state="loading"] .st-inline-text {
