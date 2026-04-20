@@ -152,6 +152,7 @@
 - 60 天发布与经营计划：`docs/launch-operations-plan.md`
 - 商店素材拍摄脚本：`docs/store-assets-brief.md`
 - 公开页面部署说明：`docs/public-pages-deployment.md`
+- GitHub Pages 首页：`docs/index.html`
 - 隐私政策静态页：`docs/privacy-policy.html`
 - 支持页静态页：`docs/support.html`
 

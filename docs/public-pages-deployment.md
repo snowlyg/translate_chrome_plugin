@@ -26,6 +26,7 @@ Last updated: `2026-04-20`
 
 建议最终公开 URL 形态：
 
+- `https://<your-account>.github.io/translate_chrome_plugin/`
 - `https://<your-account>.github.io/translate_chrome_plugin/privacy-policy.html`
 - `https://<your-account>.github.io/translate_chrome_plugin/support.html`
 

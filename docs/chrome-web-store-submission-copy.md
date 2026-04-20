@@ -51,7 +51,7 @@ Last updated: `2026-04-20`
 
 ### Homepage URL
 
-`https://github.com/snowlyg/translate_chrome_plugin`
+`https://<your-account>.github.io/translate_chrome_plugin/`
 
 ### Support URL
 
