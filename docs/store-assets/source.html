@@ -20,6 +20,16 @@
         box-sizing: border-box;
       }
 
+      html {
+        margin: 0;
+        width: 100%;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at 12% 10%, rgba(37, 99, 235, 0.20), transparent 28%),
+          radial-gradient(circle at 92% 8%, rgba(15, 118, 110, 0.18), transparent 24%),
+          linear-gradient(135deg, #f6fbff 0%, #eef5ff 46%, #f8fbff 100%);
+      }
+
       body {
         margin: 0;
         width: 100vw;
@@ -386,15 +396,30 @@
 
       .marquee {
         position: relative;
-        width: 100vw;
-        height: 100vh;
-        padding: 48px 64px;
+        width: 1400px;
+        height: 680px;
+        min-height: 680px;
+        padding: 76px 64px 48px;
         overflow: hidden;
         background:
           radial-gradient(circle at 80% 22%, rgba(15, 118, 110, 0.28), transparent 30%),
           radial-gradient(circle at 24% 12%, rgba(255, 255, 255, 0.18), transparent 26%),
           linear-gradient(135deg, #1e40af 0%, #2563eb 52%, #0f766e 100%);
         color: white;
+      }
+
+      body:has(.marquee) {
+        background:
+          radial-gradient(circle at 80% 22%, rgba(15, 118, 110, 0.28), transparent 30%),
+          radial-gradient(circle at 24% 12%, rgba(255, 255, 255, 0.18), transparent 26%),
+          linear-gradient(135deg, #1e40af 0%, #2563eb 52%, #0f766e 100%);
+      }
+
+      html:has(.marquee) {
+        background:
+          radial-gradient(circle at 80% 22%, rgba(15, 118, 110, 0.28), transparent 30%),
+          radial-gradient(circle at 24% 12%, rgba(255, 255, 255, 0.18), transparent 26%),
+          linear-gradient(135deg, #1e40af 0%, #2563eb 52%, #0f766e 100%);
       }
 
       .marquee .brand-mark {
@@ -408,7 +433,7 @@
       }
 
       .marquee h1 {
-        margin: 68px 0 18px;
+        margin: 56px 0 18px;
         width: 600px;
         font-size: 70px;
         line-height: 1.02;
@@ -426,9 +451,9 @@
       .marquee-window {
         position: absolute;
         right: 64px;
-        bottom: 48px;
+        top: 138px;
         width: 660px;
-        height: 390px;
+        height: 300px;
         border: 1px solid rgba(255, 255, 255, 0.24);
         border-radius: 30px;
         background: rgba(255, 255, 255, 0.97);
@@ -442,11 +467,11 @@
       }
 
       .marquee-window .page {
-        padding: 30px 40px;
+        padding: 24px 40px;
       }
 
       .marquee-window .article-title {
-        font-size: 30px;
+        font-size: 27px;
       }
 
       .marquee-window .article-text {
@@ -455,12 +480,12 @@
       }
 
       .marquee-window .translate-card {
-        margin-top: 16px;
-        padding: 16px 18px;
+        margin-top: 12px;
+        padding: 14px 18px;
       }
 
       .marquee-window .translation {
-        font-size: 18px;
+        font-size: 16px;
       }
 
       .marquee-features {
@@ -551,6 +576,18 @@
         </div>
       `;
 
+      const marqueeArticle = `
+        <div class="article-kicker">Reading Mode</div>
+        <h2 class="article-title">Translate without leaving the page</h2>
+        <p class="article-text">
+          Select any sentence and read the translation inline, without copying text or opening another tab.
+        </p>
+        <div class="translate-card">
+          <div class="card-label">译文 · Primary</div>
+          <div class="translation">选中句子后，译文会直接出现在网页正文下方。</div>
+        </div>
+      `;
+
       if (scene === "promo") {
         app.className = "promo";
         app.innerHTML = `
@@ -570,7 +607,7 @@
               <span class="dot"></span><span class="dot"></span><span class="dot"></span>
               <div class="address">developer.example.com/articles/productivity</div>
             </div>
-            <div class="page">${article}</div>
+            <div class="page">${marqueeArticle}</div>
           </div>
           <div class="marquee-features"><span>页内译文</span><span>TTS 朗读</span><span>单词词典</span></div>
         `;
