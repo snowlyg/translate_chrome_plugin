@@ -26,9 +26,9 @@ Last updated: `2026-04-20`
 
 建议最终公开 URL 形态：
 
-- `https://<your-account>.github.io/translate_chrome_plugin/`
-- `https://<your-account>.github.io/translate_chrome_plugin/privacy-policy.html`
-- `https://<your-account>.github.io/translate_chrome_plugin/support.html`
+- `https://snowlyg.github.io/translate_chrome_plugin/`
+- `https://snowlyg.github.io/translate_chrome_plugin/privacy-policy.html`
+- `https://snowlyg.github.io/translate_chrome_plugin/support.html`
 
 ### 方案 B：单独建一个静态官网仓库
 

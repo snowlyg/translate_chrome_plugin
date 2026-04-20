@@ -51,15 +51,15 @@ Last updated: `2026-04-20`
 
 ### Homepage URL
 
-`https://<your-account>.github.io/translate_chrome_plugin/`
+`https://snowlyg.github.io/translate_chrome_plugin/`
 
 ### Support URL
 
-`https://<your-account>.github.io/translate_chrome_plugin/support.html`
+`https://snowlyg.github.io/translate_chrome_plugin/support.html`
 
 ### Privacy Policy URL
 
-`https://<your-account>.github.io/translate_chrome_plugin/privacy-policy.html`
+`https://snowlyg.github.io/translate_chrome_plugin/privacy-policy.html`
 
 ## Single Purpose Statement
 
