@@ -1,8 +1,8 @@
 <svg width="1120" height="320" viewBox="0 0 1120 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="1120" height="320" rx="40" fill="#F7FBFF"/>
   <rect x="56" y="56" width="208" height="208" rx="52" fill="url(#bg)"/>
-  <rect x="116" y="106" width="94" height="24" rx="12" transform="rotate(-31 116 106)" fill="white"/>
-  <rect x="116" y="168" width="80" height="24" rx="12" transform="rotate(-31 116 168)" fill="white"/>
+  <rect x="116" y="118" width="94" height="24" rx="12" transform="rotate(-31 116 118)" fill="white"/>
+  <rect x="116" y="180" width="80" height="24" rx="12" transform="rotate(-31 116 180)" fill="white"/>
   <g transform="translate(330 88)">
     <text x="0" y="72" fill="#111827" font-size="68" font-weight="800" font-family="Avenir Next, Segoe UI, Arial, sans-serif" letter-spacing="-2">极简翻译</text>
     <text x="0" y="122" fill="#64748B" font-size="27" font-weight="600" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Minimal Translation</text>
