@@ -1,21 +1,18 @@
 <svg width="1120" height="320" viewBox="0 0 1120 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1120" height="320" rx="40" fill="#F7F9FC"/>
-  <rect x="56" y="56" width="208" height="208" rx="40" fill="#2F343D"/>
-  <g transform="translate(160 160) rotate(-45)">
-    <rect x="-62" y="-28" width="112" height="56" rx="18" fill="#050608"/>
-    <rect x="4" y="-28" width="112" height="56" rx="18" fill="#2F6BFF"/>
-    <rect x="4" y="-28" width="112" height="56" rx="18" fill="url(#paint0_linear_201_8)" fill-opacity="0.92"/>
-  </g>
+  <rect width="1120" height="320" rx="40" fill="#F7FBFF"/>
+  <rect x="56" y="56" width="208" height="208" rx="52" fill="url(#bg)"/>
+  <rect x="116" y="106" width="94" height="24" rx="12" transform="rotate(-31 116 106)" fill="white"/>
+  <rect x="116" y="168" width="80" height="24" rx="12" transform="rotate(-31 116 168)" fill="white"/>
   <g transform="translate(330 88)">
-    <text x="0" y="72" fill="#111827" font-size="68" font-weight="700" font-family="Avenir Next, Segoe UI, Arial, sans-serif" letter-spacing="-1.8">极简翻译</text>
-    <text x="0" y="118" fill="#6B7280" font-size="26" font-weight="600" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Minimal Translate Plugin</text>
-    <rect x="0" y="154" width="176" height="42" rx="21" fill="#E7EEFF"/>
-    <text x="24" y="181" fill="#2F6BFF" font-size="18" font-weight="700" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Default Blue</text>
+    <text x="0" y="72" fill="#111827" font-size="68" font-weight="800" font-family="Avenir Next, Segoe UI, Arial, sans-serif" letter-spacing="-2">极简翻译</text>
+    <text x="0" y="122" fill="#64748B" font-size="27" font-weight="600" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Minimal Translation</text>
+    <rect x="0" y="158" width="200" height="44" rx="22" fill="#E0EDFF"/>
+    <text x="24" y="187" fill="#2563EB" font-size="18" font-weight="800" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Inline Translate</text>
   </g>
   <defs>
-    <linearGradient id="paint0_linear_201_8" x1="60" y1="-28" x2="60" y2="28" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4A85FF"/>
-      <stop offset="1" stop-color="#2F6BFF"/>
+    <linearGradient id="bg" x1="72" y1="72" x2="248" y2="248" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#0F766E"/>
     </linearGradient>
   </defs>
 </svg>
