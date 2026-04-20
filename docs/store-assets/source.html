@@ -383,6 +383,102 @@
         font-size: 13px;
         font-weight: 800;
       }
+
+      .marquee {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        padding: 48px 64px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 80% 22%, rgba(15, 118, 110, 0.28), transparent 30%),
+          radial-gradient(circle at 24% 12%, rgba(255, 255, 255, 0.18), transparent 26%),
+          linear-gradient(135deg, #1e40af 0%, #2563eb 52%, #0f766e 100%);
+        color: white;
+      }
+
+      .marquee .brand-mark {
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 16px 34px rgba(8, 31, 76, 0.24);
+      }
+
+      .marquee .brand-mark::before,
+      .marquee .brand-mark::after {
+        background: var(--blue);
+      }
+
+      .marquee h1 {
+        margin: 68px 0 18px;
+        width: 600px;
+        font-size: 70px;
+        line-height: 1.02;
+        letter-spacing: -0.075em;
+      }
+
+      .marquee p {
+        width: 530px;
+        margin: 0;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 24px;
+        line-height: 1.5;
+      }
+
+      .marquee-window {
+        position: absolute;
+        right: 64px;
+        bottom: 48px;
+        width: 660px;
+        height: 390px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.97);
+        color: var(--ink);
+        box-shadow: 0 30px 80px rgba(5, 22, 55, 0.28);
+        overflow: hidden;
+      }
+
+      .marquee-window .browser-top {
+        background: rgba(248, 251, 255, 0.94);
+      }
+
+      .marquee-window .page {
+        padding: 30px 40px;
+      }
+
+      .marquee-window .article-title {
+        font-size: 30px;
+      }
+
+      .marquee-window .article-text {
+        font-size: 16px;
+        color: #33445c;
+      }
+
+      .marquee-window .translate-card {
+        margin-top: 16px;
+        padding: 16px 18px;
+      }
+
+      .marquee-window .translation {
+        font-size: 18px;
+      }
+
+      .marquee-features {
+        position: absolute;
+        left: 64px;
+        bottom: 46px;
+        display: flex;
+        gap: 12px;
+      }
+
+      .marquee-features span {
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 15px;
+        font-weight: 800;
+      }
     </style>
   </head>
   <body>
@@ -462,6 +558,21 @@
           <h1>网页内直接翻译，不跳页</h1>
           <p>划词即译、原文朗读、单词词典，保持阅读上下文。</p>
           <div class="promo-tags"><span>页内译文</span><span>TTS 朗读</span><span>单词词典</span></div>
+        `;
+      } else if (scene === "marquee") {
+        app.className = "marquee";
+        app.innerHTML = `
+          ${brand()}
+          <h1>网页内直接翻译，不跳页</h1>
+          <p>划词即译、原文朗读、单词词典和多翻译源回退，专为网页阅读设计。</p>
+          <div class="marquee-window">
+            <div class="browser-top">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <div class="address">developer.example.com/articles/productivity</div>
+            </div>
+            <div class="page">${article}</div>
+          </div>
+          <div class="marquee-features"><span>页内译文</span><span>TTS 朗读</span><span>单词词典</span></div>
         `;
       } else if (scene === "dictionary") {
         app.className = "canvas";

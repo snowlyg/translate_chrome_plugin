@@ -18,6 +18,7 @@ Last updated: `2026-04-20`
 ## 已生成素材
 
 - 小宣传图：`docs/store-assets/promo-small.png`
+- 顶部宣传图：`docs/store-assets/promo-marquee.png`
 - 截图 1：`docs/store-assets/screenshot-inline-translate.png`
 - 截图 2：`docs/store-assets/screenshot-dictionary.png`
 - 截图 3：`docs/store-assets/screenshot-settings.png`
