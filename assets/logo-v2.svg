@@ -1,0 +1,22 @@
+<svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="360" rx="44" fill="#F8FAFF"/>
+  <g transform="translate(64 44)">
+    <rect x="0" y="0" width="272" height="272" rx="56" fill="white"/>
+    <path d="M132 48C84.6 48 46 86.6 46 134C46 181.4 84.6 220 132 220H176C183.7 220 190 213.7 190 206C190 198.3 183.7 192 176 192H132C100 192 74 166 74 134C74 102 100 76 132 76H178C185.7 76 192 69.7 192 62C192 54.3 185.7 48 178 48H132Z" fill="#3B78E7"/>
+    <path d="M162 118C162 110.3 168.3 104 176 104H228C245.7 104 260 118.3 260 136C260 153.7 245.7 168 228 168H170C162.3 168 156 161.7 156 154C156 146.3 162.3 140 170 140H228C230.2 140 232 138.2 232 136C232 133.8 230.2 132 228 132H176C168.3 132 162 125.7 162 118Z" fill="#E84A2A"/>
+    <path d="M208 170C215.7 170 222 176.3 222 184V214C222 244.9 196.9 270 166 270H154C146.3 270 140 263.7 140 256C140 248.3 146.3 242 154 242H166C181.5 242 194 229.5 194 214V184C194 176.3 200.3 170 208 170Z" fill="#FDC21B"/>
+    <path d="M150 146L178 118L206 146L178 174L150 146Z" fill="#18A06B"/>
+  </g>
+  <g transform="translate(404 84)">
+    <text x="0" y="78" fill="#111111" font-size="72" font-weight="700" font-family="Avenir Next, Segoe UI, Arial, sans-serif" letter-spacing="-1.8">极简翻译</text>
+    <text x="0" y="126" fill="#667085" font-size="28" font-weight="600" font-family="Avenir Next, Segoe UI, Arial, sans-serif" letter-spacing="0.2">Minimal Translate Plugin</text>
+    <rect x="0" y="168" width="154" height="42" rx="21" fill="#EAF1FF"/>
+    <text x="24" y="196" fill="#3B78E7" font-size="20" font-weight="700" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Real-time</text>
+    <rect x="170" y="168" width="148" height="42" rx="21" fill="#FFF1D1"/>
+    <text x="194" y="196" fill="#B56A00" font-size="20" font-weight="700" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Multi-source</text>
+    <rect x="334" y="168" width="154" height="42" rx="21" fill="#E7F8F2"/>
+    <text x="358" y="196" fill="#178D61" font-size="20" font-weight="700" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Inline UX</text>
+    <path d="M0 238H518" stroke="#E4E7EC" stroke-width="2"/>
+    <text x="0" y="286" fill="#344054" font-size="24" font-weight="600" font-family="Avenir Next, Segoe UI, Arial, sans-serif">Blue arc + red bridge + yellow motion tail + green translation core</text>
+  </g>
+</svg>
