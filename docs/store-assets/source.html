@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简翻译商店素材</title>
+    <style>
+      :root {
+        --blue: #2563eb;
+        --blue-dark: #1d4ed8;
+        --ink: #172033;
+        --muted: #637083;
+        --line: #dbe5f4;
+        --card: rgba(255, 255, 255, 0.86);
+        --soft: #eef6ff;
+        --green: #0f766e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 12% 10%, rgba(37, 99, 235, 0.20), transparent 28%),
+          radial-gradient(circle at 92% 8%, rgba(15, 118, 110, 0.18), transparent 24%),
+          linear-gradient(135deg, #f6fbff 0%, #eef5ff 46%, #f8fbff 100%);
+      }
+
+      .canvas {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        padding: 42px 48px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .brand-mark {
+        position: relative;
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        background: linear-gradient(135deg, #2563eb, #0f766e);
+        box-shadow: 0 16px 34px rgba(37, 99, 235, 0.22);
+      }
+
+      .brand-mark::before,
+      .brand-mark::after {
+        content: "";
+        position: absolute;
+        background: white;
+        border-radius: 999px;
+        transform: rotate(-35deg);
+      }
+
+      .brand-mark::before {
+        left: 12px;
+        top: 9px;
+        width: 20px;
+        height: 7px;
+      }
+
+      .brand-mark::after {
+        left: 13px;
+        top: 21px;
+        width: 18px;
+        height: 7px;
+      }
+
+      .brand span {
+        font-size: 24px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 13px;
+        border: 1px solid rgba(37, 99, 235, 0.16);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--blue-dark);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .headline {
+        margin: 22px 0 10px;
+        max-width: 470px;
+        font-size: 48px;
+        line-height: 1.06;
+        letter-spacing: -0.06em;
+      }
+
+      .headline strong {
+        color: var(--blue);
+      }
+
+      .subhead {
+        max-width: 450px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 19px;
+        line-height: 1.55;
+      }
+
+      .browser {
+        position: absolute;
+        right: 50px;
+        bottom: 46px;
+        width: 690px;
+        height: 560px;
+        border: 1px solid rgba(117, 135, 166, 0.25);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 28px 80px rgba(25, 46, 88, 0.18);
+        overflow: hidden;
+      }
+
+      .browser-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 52px;
+        padding: 0 18px;
+        border-bottom: 1px solid rgba(219, 229, 244, 0.86);
+        background: rgba(248, 251, 255, 0.92);
+      }
+
+      .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        background: #d5deeb;
+      }
+
+      .address {
+        margin-left: 12px;
+        flex: 1;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: #eef3fa;
+        color: #7b8798;
+        font-size: 13px;
+      }
+
+      .page {
+        position: relative;
+        padding: 32px 46px;
+      }
+
+      .article-kicker {
+        color: var(--green);
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .article-title {
+        margin: 10px 0 18px;
+        font-size: 34px;
+        line-height: 1.15;
+        letter-spacing: -0.04em;
+      }
+
+      .line {
+        height: 14px;
+        margin: 12px 0;
+        border-radius: 999px;
+        background: #dce6f3;
+      }
+
+      .line.short {
+        width: 52%;
+      }
+
+      .line.mid {
+        width: 74%;
+      }
+
+      .selection {
+        display: inline;
+        padding: 2px 5px;
+        border-radius: 7px;
+        background: rgba(37, 99, 235, 0.18);
+        color: #153e9b;
+        font-weight: 800;
+      }
+
+      .article-text {
+        margin: 18px 0 0;
+        color: #33445c;
+        font-size: 18px;
+        line-height: 1.75;
+      }
+
+      .translate-card {
+        margin-top: 18px;
+        padding: 18px 20px;
+        border-left: 4px solid var(--blue);
+        border-radius: 0 18px 18px 0;
+        background: linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 0.94));
+        box-shadow: 0 18px 34px rgba(37, 99, 235, 0.14);
+      }
+
+      .card-label {
+        color: var(--blue-dark);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .translation {
+        margin: 8px 0 12px;
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1.55;
+      }
+
+      .actions {
+        display: flex;
+        gap: 9px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #e0edff;
+        color: var(--blue-dark);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .dictionary {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .dict-panel {
+        padding: 16px;
+        border: 1px solid rgba(37, 99, 235, 0.14);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.78);
+      }
+
+      .word {
+        font-size: 34px;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+      }
+
+      .phonetic {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .definition {
+        margin: 10px 0 0;
+        color: #33445c;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .settings {
+        position: absolute;
+        right: 76px;
+        bottom: 70px;
+        width: 660px;
+        padding: 28px;
+        border: 1px solid rgba(117, 135, 166, 0.22);
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 28px 80px rgba(25, 46, 88, 0.18);
+      }
+
+      .settings h2 {
+        margin: 0 0 18px;
+        font-size: 32px;
+        letter-spacing: -0.04em;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+
+      .field {
+        padding: 16px;
+        border: 1px solid rgba(219, 229, 244, 0.92);
+        border-radius: 18px;
+        background: #f8fbff;
+      }
+
+      .field span {
+        display: block;
+        margin-bottom: 8px;
+        color: #637083;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .field strong {
+        font-size: 18px;
+      }
+
+      .promo {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        padding: 25px 28px;
+        background:
+          radial-gradient(circle at 82% 18%, rgba(15, 118, 110, 0.24), transparent 34%),
+          linear-gradient(135deg, #1d4ed8 0%, #2563eb 54%, #0f766e 100%);
+        color: white;
+      }
+
+      .promo .brand {
+        color: white;
+      }
+
+      .promo .brand-mark {
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 16px 34px rgba(8, 31, 76, 0.24);
+      }
+
+      .promo .brand-mark::before,
+      .promo .brand-mark::after {
+        background: var(--blue);
+      }
+
+      .promo h1 {
+        margin: 24px 0 10px;
+        max-width: 270px;
+        font-size: 34px;
+        line-height: 1.04;
+        letter-spacing: -0.07em;
+      }
+
+      .promo p {
+        max-width: 250px;
+        margin: 0;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .promo-tags {
+        position: absolute;
+        left: 28px;
+        right: 28px;
+        bottom: 24px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .promo-tags span {
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 13px;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script>
+      const scene = new URLSearchParams(location.search).get("scene") || "inline";
+      const app = document.getElementById("app");
+
+      function brand() {
+        return `<div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>极简翻译</span></div>`;
+      }
+
+      function browser(content) {
+        return `
+          <div class="browser">
+            <div class="browser-top">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <div class="address">developer.example.com/articles/productivity</div>
+            </div>
+            <div class="page">${content}</div>
+          </div>
+        `;
+      }
+
+      const article = `
+        <div class="article-kicker">Reading Mode</div>
+        <h2 class="article-title">Translate without leaving the page</h2>
+        <p class="article-text">
+          Modern readers need tools that keep context. <span class="selection">Select any sentence and read the translation inline</span>, without copying text or opening another tab.
+        </p>
+        <div class="translate-card">
+          <div class="card-label">译文 · Primary</div>
+          <div class="translation">选中句子后，译文会直接出现在网页正文下方，阅读不中断。</div>
+          <div class="actions"><span class="pill">朗读原文</span><span class="pill">语法提示</span></div>
+        </div>
+      `;
+
+      const dictionary = `
+        <div class="article-kicker">Vocabulary</div>
+        <h2 class="article-title">Understand words in context</h2>
+        <p class="article-text">
+          The article highlights the word <span class="selection">efficient</span> while you are reading.
+        </p>
+        <div class="translate-card">
+          <div class="card-label">译文 · 单词详情</div>
+          <div class="translation">efficient：高效的；有效率的</div>
+          <div class="actions"><span class="pill">朗读</span><span class="pill">查看词典</span></div>
+          <div class="dictionary">
+            <div class="dict-panel">
+              <div class="word">efficient</div>
+              <div class="phonetic">/ɪˈfɪʃənt/</div>
+            </div>
+            <div class="dict-panel">
+              <div class="card-label">Definition</div>
+              <p class="definition">Working well without wasting time or energy. Example: an efficient workflow.</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const settings = `
+        <div class="settings">
+          <h2>按你的阅读习惯配置</h2>
+          <div class="grid">
+            <div class="field"><span>结果展示方式</span><strong>页内模式</strong></div>
+            <div class="field"><span>TTS 播报</span><strong>智能推荐 · 柔和</strong></div>
+            <div class="field"><span>翻译源</span><strong>多源回退</strong></div>
+            <div class="field"><span>网站规则</span><strong>白名单 / 黑名单</strong></div>
+          </div>
+        </div>
+      `;
+
+      if (scene === "promo") {
+        app.className = "promo";
+        app.innerHTML = `
+          ${brand()}
+          <h1>网页内直接翻译，不跳页</h1>
+          <p>划词即译、原文朗读、单词词典，保持阅读上下文。</p>
+          <div class="promo-tags"><span>页内译文</span><span>TTS 朗读</span><span>单词词典</span></div>
+        `;
+      } else if (scene === "dictionary") {
+        app.className = "canvas";
+        app.innerHTML = `${brand()}<div class="tag">单词词典 + 朗读</div><h1 class="headline">阅读时顺手查单词</h1><p class="subhead">音标、词性、释义和例句集中展示，不打断当前文章。</p>${browser(dictionary)}`;
+      } else if (scene === "settings") {
+        app.className = "canvas";
+        app.innerHTML = `${brand()}<div class="tag">可配置翻译体验</div><h1 class="headline">翻译源、朗读和网站规则都可调</h1><p class="subhead">按场景选择页内模式或分隔模式，配置语音参数和翻译源回退。</p>${settings}`;
+      } else {
+        app.className = "canvas";
+        app.innerHTML = `${brand()}<div class="tag">划词即译</div><h1 class="headline">在网页里直接看到<strong>译文</strong></h1><p class="subhead">不复制、不跳转，选中句子后译文自动插入到正文旁边。</p>${browser(article)}`;
+      }
+    </script>
+  </body>
+</html>

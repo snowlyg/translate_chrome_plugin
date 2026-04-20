@@ -15,6 +15,14 @@ Last updated: `2026-04-20`
 - 使用当前 `assets/icons/icon-128.png` 作为商店图标
 - 如果后续更换品牌图标，确保与扩展内工具栏图标一致
 
+## 已生成素材
+
+- 小宣传图：`docs/store-assets/promo-small.png`
+- 截图 1：`docs/store-assets/screenshot-inline-translate.png`
+- 截图 2：`docs/store-assets/screenshot-dictionary.png`
+- 截图 3：`docs/store-assets/screenshot-settings.png`
+- 可复现源文件：`docs/store-assets/source.html`
+
 ## 截图建议
 
 ### 截图 1：划词即译
