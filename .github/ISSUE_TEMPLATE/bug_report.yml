@@ -1,0 +1,69 @@
+name: Bug Report
+description: Report a reproducible problem with translation, TTS, OCR, settings, or compatibility.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue type
+      options:
+        - Translation failed
+        - TTS playback issue
+        - OCR image translation issue
+        - Settings not saved
+        - Website compatibility issue
+        - Other bug
+    validations:
+      required: true
+  - type: input
+    id: chrome_version
+    attributes:
+      label: Chrome version
+      placeholder: e.g. 135.0.x
+    validations:
+      required: true
+  - type: input
+    id: os_version
+    attributes:
+      label: Operating system
+      placeholder: e.g. Windows 11 / macOS 15 / Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: webpage
+    attributes:
+      label: Webpage URL
+      placeholder: Paste the page URL where the issue happened
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps so the issue can be reproduced.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Click ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: actual_result
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: expected_result
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or console errors
+      description: Paste screenshots or relevant error messages if available.

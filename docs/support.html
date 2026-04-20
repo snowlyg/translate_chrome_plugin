@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimal Translation Support</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fc;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #4b5563;
+      --border: #dbe3f0;
+      --accent: #0f766e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 28%),
+        linear-gradient(180deg, #f0fdfa 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    main {
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 40px 20px 64px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 16px 40px rgba(15, 118, 110, 0.08);
+    }
+
+    h1, h2 {
+      margin-top: 0;
+      color: #111827;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin-top: 28px;
+      margin-bottom: 12px;
+    }
+
+    p, li {
+      color: var(--muted);
+    }
+
+    ul {
+      padding-left: 22px;
+      margin: 12px 0;
+    }
+
+    .meta {
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    a {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Support</h1>
+      <p class="meta">Project: Minimal Translation / Last updated: 2026-04-20</p>
+
+      <p>Minimal Translation is a Chrome extension for webpage inline translation, reading assistance, and text-to-speech playback.</p>
+
+      <h2>Contact</h2>
+      <p>Email: <a href="mailto:brendenaudrina6287@gmail.com">brendenaudrina6287@gmail.com</a></p>
+      <p>GitHub Issues: <a href="https://github.com/snowlyg/translate_chrome_plugin/issues">https://github.com/snowlyg/translate_chrome_plugin/issues</a></p>
+
+      <h2>Support Scope</h2>
+      <ul>
+        <li>Installation and loading issues</li>
+        <li>Translation provider configuration</li>
+        <li>TTS playback issues</li>
+        <li>Commercial translation endpoint setup questions</li>
+        <li>Website compatibility issues</li>
+        <li>Privacy-related questions</li>
+        <li>Feature feedback and bug reports</li>
+      </ul>
+
+      <h2>When Reporting an Issue</h2>
+      <ul>
+        <li>Your Chrome version</li>
+        <li>Your operating system</li>
+        <li>The webpage URL where the problem happened</li>
+        <li>A short description of the issue</li>
+        <li>Screenshots or console errors if available</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

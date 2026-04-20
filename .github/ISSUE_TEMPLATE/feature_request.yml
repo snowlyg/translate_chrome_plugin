@@ -1,0 +1,38 @@
+name: Feature Request
+description: Suggest an improvement to the reading translation workflow.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: Describe the reading or translation scenario you want to improve.
+      placeholder: I am reading ... and I want to ...
+    validations:
+      required: true
+  - type: textarea
+    id: current_problem
+    attributes:
+      label: Current problem
+      description: Explain what is difficult with the current extension behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: Describe the expected behavior as concretely as possible.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Nice to have
+        - Important
+        - Critical for my workflow
+    validations:
+      required: true

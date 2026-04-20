@@ -4,13 +4,13 @@
   <img src="./assets/logo.svg" alt="极简翻译 logo" width="220">
 </p>
 
-一个基于 Chrome Manifest V3 的浏览器划词翻译插件。
+一个基于 Chrome Manifest V3 的网页划词翻译与朗读扩展。
 
 [English Version](./README.en.md)
 
 ## 项目介绍
 
-极简翻译是一个面向网页阅读场景的浏览器翻译插件。用户在网页中选中单词或句子后，插件会优先在对应正文位置下直接插入译文，并支持 TTS 朗读和英文单词词典信息，适合阅读技术文档、资讯站点和跨语言内容。
+极简翻译是一个面向网页阅读场景的网页划词翻译与朗读扩展。用户在网页中选中单词或句子后，插件会优先在对应正文位置下直接插入译文，并支持 TTS 朗读和英文单词词典信息，适合阅读技术文档、资讯站点和跨语言内容。
 
 ## 作者信息
 
@@ -38,6 +38,12 @@
 - 百度可配置为“仅回退”并设置月度免费字符上限，超出后当月自动停用
 - 支持接入自定义商业翻译接口
 - 支持配置自定义公共翻译端点
+
+## 产品定位
+
+- 单一目的：`网页划词翻译与朗读`
+- 核心场景：阅读英文技术文档、博客、资讯和跨语言网页内容时，减少复制粘贴和标签页切换
+- 辅助能力：词典、OCR、多翻译源和语法提示均服务于网页阅读中的翻译理解过程
 
 ## 目录
 
@@ -140,6 +146,25 @@
 - 扩展商店资料：`docs/web-store-listing.md`
 - 隐私政策草稿：`docs/privacy-policy.md`
 - 支持信息模板：`docs/support-info.md`
+- 审核测试说明：`docs/chrome-web-store-test-instructions.md`
+- 商店提审填写稿：`docs/chrome-web-store-submission-copy.md`
+- 发布检查清单：`docs/release-checklist.md`
+- 60 天发布与经营计划：`docs/launch-operations-plan.md`
+- 商店素材拍摄脚本：`docs/store-assets-brief.md`
+- 公开页面部署说明：`docs/public-pages-deployment.md`
+- 隐私政策静态页：`docs/privacy-policy.html`
+- 支持页静态页：`docs/support.html`
+
+## 反馈与支持
+
+- 支持邮箱：`brendenaudrina6287@gmail.com`
+- GitHub Issues：`https://github.com/snowlyg/translate_chrome_plugin/issues`
+- 建议反馈时附上 Chrome 版本、操作系统、问题网页地址和截图
+
+## 打包发布
+
+- 可运行 `scripts/package-release.ps1` 生成仅包含运行文件的 ZIP 发布包
+- 默认输出路径为 `dist/minimal-translation-chrome-extension.zip`
 
 ## 维护说明
 
