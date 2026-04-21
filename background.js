@@ -9,7 +9,7 @@ const DEFAULT_SETTINGS = {
   ttsPitch: 0.98,
   ttsVolume: 1,
   uiLanguage: "zh-CN",
-  resultDisplayMode: "inline",
+  resultDisplayMode: "split",
   themeColor: "#2563EB",
   siteAccessMode: "all",
   siteWhitelist: "",

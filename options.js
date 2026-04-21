@@ -210,7 +210,7 @@ async function initialize() {
   fields.targetLanguage.value = settings.targetLanguage || "zh-CN";
   fields.ttsEnabled.value = String(settings.ttsEnabled !== false);
   fields.grammarHintsEnabled.value = String(settings.grammarHintsEnabled !== false);
-  fields.resultDisplayMode.value = settings.resultDisplayMode === "split" ? "split" : "inline";
+  fields.resultDisplayMode.value = settings.resultDisplayMode === "inline" ? "inline" : "split";
   const themeColor = normalizeThemeColor(settings.themeColor || settings.themePreset || DEFAULT_THEME_COLOR);
   fields.themeColor.value = themeColor;
   fields.themeColorText.value = themeColor.toUpperCase();

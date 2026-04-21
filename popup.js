@@ -2,6 +2,7 @@ const enabledInput = document.getElementById("enabled");
 const targetLanguageSelect = document.getElementById("targetLanguage");
 const ttsEnabledInput = document.getElementById("ttsEnabled");
 const grammarHintsEnabledInput = document.getElementById("grammarHintsEnabled");
+const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
 const openOptionsButton = document.getElementById("openOptions");
 const statusNode = document.getElementById("status");
 const DEFAULT_THEME_COLOR = "#2563EB";
@@ -11,13 +12,16 @@ const I18N = {
     heroTabPrimary: "翻译",
     heroTabSecondary: "语法",
     heroChipModeInline: "默认页内",
-    heroChipModeSplit: "分隔模式",
+    heroChipModeSplit: "默认侧边",
     heroChipGrammarOn: "语法已启用",
     heroChipGrammarOff: "语法已关闭",
     heroSummaryInline: "默认页内显示翻译与语法提示。",
-    heroSummarySplit: "在右侧分隔面板显示结果。",
+    heroSummarySplit: "默认在右侧侧边面板显示结果。",
     labelEnabled: "启用划词翻译",
     labelTargetLanguage: "目标语言",
+    labelResultDisplayMode: "结果展示方式",
+    modeSplit: "侧边模式",
+    modeInline: "页内模式",
     labelTtsEnabled: "启用 TTS 播报",
     labelGrammarHints: "启用语法提示",
     openOptions: "打开高级设置",
@@ -31,13 +35,16 @@ const I18N = {
     heroTabPrimary: "Translating",
     heroTabSecondary: "Grammar",
     heroChipModeInline: "Inline first",
-    heroChipModeSplit: "Split panel",
+    heroChipModeSplit: "Side panel",
     heroChipGrammarOn: "Grammar on",
     heroChipGrammarOff: "Grammar off",
     heroSummaryInline: "Show translation and grammar inline.",
-    heroSummarySplit: "Show results in the right split panel.",
+    heroSummarySplit: "Show results in the right side panel by default.",
     labelEnabled: "Enable Selection Translate",
     labelTargetLanguage: "Target Language",
+    labelResultDisplayMode: "Result Display Mode",
+    modeSplit: "Side Panel",
+    modeInline: "Inline",
     labelTtsEnabled: "Enable TTS",
     labelGrammarHints: "Enable Grammar Hints",
     openOptions: "Open Advanced Settings",
@@ -64,10 +71,16 @@ async function initialize() {
   targetLanguageSelect.value = settings.targetLanguage || "zh-CN";
   ttsEnabledInput.checked = Boolean(settings.ttsEnabled);
   grammarHintsEnabledInput.checked = Boolean(settings.grammarHintsEnabled);
-  syncHeroState(settings.resultDisplayMode === "split" ? "split" : "inline");
+  syncDisplayMode(settings.resultDisplayMode === "inline" ? "inline" : "split");
 
   enabledInput.addEventListener("change", persist);
   targetLanguageSelect.addEventListener("change", persist);
+  modeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      syncDisplayMode(button.dataset.mode === "inline" ? "inline" : "split");
+      void persist();
+    });
+  });
   ttsEnabledInput.addEventListener("change", persist);
   grammarHintsEnabledInput.addEventListener("change", () => {
     syncHeroState();
@@ -89,7 +102,7 @@ async function initialize() {
       syncHeroState();
     }
     if ("resultDisplayMode" in changes) {
-      syncHeroState(changes.resultDisplayMode.newValue === "split" ? "split" : "inline");
+      syncDisplayMode(changes.resultDisplayMode.newValue === "inline" ? "inline" : "split");
     }
   });
 }
@@ -100,6 +113,7 @@ async function persist() {
     payload: {
       enabled: enabledInput.checked,
       targetLanguage: targetLanguageSelect.value,
+      resultDisplayMode: getCurrentDisplayMode(),
       ttsEnabled: ttsEnabledInput.checked,
       grammarHintsEnabled: grammarHintsEnabledInput.checked
     }
@@ -122,6 +136,9 @@ function applyLanguage(language) {
   setText("heroTabSecondary", copy.heroTabSecondary);
   setText("labelEnabled", copy.labelEnabled);
   setText("labelTargetLanguage", copy.labelTargetLanguage);
+  setText("labelResultDisplayMode", copy.labelResultDisplayMode);
+  setText("modeSplit", copy.modeSplit);
+  setText("modeInline", copy.modeInline);
   setText("labelTtsEnabled", copy.labelTtsEnabled);
   setText("labelGrammarHints", copy.labelGrammarHints);
   setText("openOptions", copy.openOptions);
@@ -130,7 +147,7 @@ function applyLanguage(language) {
 
 function syncHeroState(mode) {
   const copy = I18N[document.documentElement.lang === "en" ? "en" : "zh-CN"];
-  const currentMode = mode || document.documentElement.dataset.popupDisplayMode || "inline";
+  const currentMode = mode || document.documentElement.dataset.popupDisplayMode || "split";
   document.documentElement.dataset.popupDisplayMode = currentMode;
   setText(
     "heroChipMode",
@@ -144,6 +161,20 @@ function syncHeroState(mode) {
     "heroSummary",
     currentMode === "split" ? copy.heroSummarySplit : copy.heroSummaryInline
   );
+}
+
+function syncDisplayMode(mode) {
+  const currentMode = mode === "inline" ? "inline" : "split";
+  modeButtons.forEach((button) => {
+    const isActive = button.dataset.mode === currentMode;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+  syncHeroState(currentMode);
+}
+
+function getCurrentDisplayMode() {
+  return document.documentElement.dataset.popupDisplayMode === "inline" ? "inline" : "split";
 }
 
 function setText(id, value) {

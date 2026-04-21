@@ -45,6 +45,14 @@
         </select>
       </label>
 
+      <section class="mode-field" aria-labelledby="labelResultDisplayMode">
+        <span id="labelResultDisplayMode">结果展示方式</span>
+        <div class="mode-toggle" role="group" aria-label="结果展示方式">
+          <button id="modeSplit" class="mode-option is-active" type="button" data-mode="split" aria-pressed="true">侧边模式</button>
+          <button id="modeInline" class="mode-option" type="button" data-mode="inline" aria-pressed="false">页内模式</button>
+        </div>
+      </section>
+
       <label class="switch">
         <span id="labelTtsEnabled">启用 TTS 播报</span>
         <input id="ttsEnabled" type="checkbox">

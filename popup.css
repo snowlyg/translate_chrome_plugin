@@ -128,7 +128,8 @@ h1 {
 }
 
 .switch,
-.field {
+.field,
+.mode-field {
   display: block;
   margin-bottom: 8px;
   padding: 11px 12px;
@@ -146,7 +147,8 @@ h1 {
 }
 
 .switch span,
-.field span {
+.field span,
+.mode-field > span {
   display: block;
   font-size: 12px;
   font-weight: 800;
@@ -155,6 +157,39 @@ h1 {
 
 .field span {
   margin-bottom: 6px;
+}
+
+.mode-field > span {
+  margin-bottom: 8px;
+}
+
+.mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 14px;
+  background: rgba(239, 246, 255, 0.78);
+}
+
+.mode-option {
+  min-height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.mode-option.is-active {
+  background: #ffffff;
+  color: var(--accent-strong);
+  box-shadow: 0 8px 18px rgba(25, 46, 88, 0.1);
 }
 
 select,

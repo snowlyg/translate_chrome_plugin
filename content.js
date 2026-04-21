@@ -17,7 +17,7 @@ let dragState = null;
 let splitDragState = null;
 let currentAnchorRect = null;
 let lastImageContext = null;
-let currentResultDisplayMode = "inline";
+let currentResultDisplayMode = "split";
 let dockAdjustedElements = [];
 let dockMutationObserver = null;
 let dockResyncTimer = null;
@@ -52,7 +52,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     applyThemeColor(changes.themeColor?.newValue || changes.themePreset?.newValue);
   }
   if ("resultDisplayMode" in changes) {
-    currentResultDisplayMode = changes.resultDisplayMode.newValue === "split" ? "split" : "inline";
+    currentResultDisplayMode = changes.resultDisplayMode.newValue === "inline" ? "inline" : "split";
     handleResultDisplayModeChange();
   }
   if ("grammarHintsEnabled" in changes) {
@@ -808,12 +808,12 @@ async function refreshPageActivationState() {
     pageActivationState.ready = true;
     pageActivationState.enabled = isPageEnabledByRules(settings, window.location.href);
     currentGrammarHintsEnabled = settings?.grammarHintsEnabled !== false;
-    currentResultDisplayMode = settings?.resultDisplayMode === "split" ? "split" : "inline";
+    currentResultDisplayMode = settings?.resultDisplayMode === "inline" ? "inline" : "split";
   } catch (_error) {
     pageActivationState.ready = true;
     pageActivationState.enabled = true;
     currentGrammarHintsEnabled = true;
-    currentResultDisplayMode = "inline";
+    currentResultDisplayMode = "split";
   }
 
   if (!currentGrammarHintsEnabled) {
