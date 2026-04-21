@@ -182,8 +182,7 @@ h1 {
 }
 
 .switch,
-.field,
-.mode-field {
+.field {
   display: block;
   margin-bottom: 8px;
   padding: 11px 12px;
@@ -191,6 +190,19 @@ h1 {
   border: 1px solid rgba(17, 24, 39, 0.08);
   background: var(--panel);
   box-shadow: 0 14px 32px rgba(18, 23, 42, 0.08);
+}
+
+.mode-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: var(--panel);
+  box-shadow: 0 10px 22px rgba(18, 23, 42, 0.06);
 }
 
 .switch {
@@ -214,27 +226,28 @@ h1 {
 }
 
 .mode-field > span {
-  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .mode-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 4px;
+  width: 170px;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid rgba(37, 99, 235, 0.14);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(239, 246, 255, 0.78);
 }
 
 .mode-option {
-  min-height: 34px;
+  min-height: 26px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 9px;
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
   transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
@@ -243,7 +256,7 @@ h1 {
 .mode-option.is-active {
   background: #ffffff;
   color: var(--accent-strong);
-  box-shadow: 0 8px 18px rgba(25, 46, 88, 0.1);
+  box-shadow: 0 6px 14px rgba(25, 46, 88, 0.08);
 }
 
 select,
