@@ -17,6 +17,17 @@
               <h1 id="heroTitle">网页划词翻译</h1>
             </div>
           </div>
+          <div class="theme-row" aria-labelledby="labelThemeColor">
+            <span id="labelThemeColor" class="theme-label">主题配色</span>
+            <div class="theme-switcher" role="group" aria-label="主题配色">
+              <button class="theme-swatch is-active" type="button" data-theme-color="#2563EB" style="--swatch-color:#2563EB;" aria-label="极简蓝" aria-pressed="true"></button>
+              <button class="theme-swatch" type="button" data-theme-color="#1D4ED8" style="--swatch-color:#1D4ED8;" aria-label="深蓝" aria-pressed="false"></button>
+              <button class="theme-swatch" type="button" data-theme-color="#0F766E" style="--swatch-color:#0F766E;" aria-label="青绿" aria-pressed="false"></button>
+              <button class="theme-swatch" type="button" data-theme-color="#3B78E7" style="--swatch-color:#3B78E7;" aria-label="亮蓝" aria-pressed="false"></button>
+              <button class="theme-swatch" type="button" data-theme-color="#178D61" style="--swatch-color:#178D61;" aria-label="深绿" aria-pressed="false"></button>
+              <button class="theme-swatch" type="button" data-theme-color="#24292F" style="--swatch-color:#24292F;" aria-label="石墨" aria-pressed="false"></button>
+            </div>
+          </div>
           <div class="hero-status-row" aria-hidden="true">
             <span id="heroTabPrimary" class="hero-status-item">Translating</span>
             <span id="heroTabSecondary" class="hero-status-item">Grammar</span>
@@ -28,11 +39,6 @@
           <p id="heroSummary" class="summary">默认页内显示翻译与语法提示。</p>
         </div>
       </section>
-
-      <label class="switch">
-        <span id="labelEnabled">启用划词翻译</span>
-        <input id="enabled" type="checkbox">
-      </label>
 
       <label class="field">
         <span id="labelTargetLanguage">目标语言</span>

@@ -1,8 +1,8 @@
-const enabledInput = document.getElementById("enabled");
 const targetLanguageSelect = document.getElementById("targetLanguage");
 const ttsEnabledInput = document.getElementById("ttsEnabled");
 const grammarHintsEnabledInput = document.getElementById("grammarHintsEnabled");
 const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
+const themeButtons = Array.from(document.querySelectorAll("[data-theme-color]"));
 const openOptionsButton = document.getElementById("openOptions");
 const statusNode = document.getElementById("status");
 const DEFAULT_THEME_COLOR = "#2563EB";
@@ -17,7 +17,7 @@ const I18N = {
     heroChipGrammarOff: "语法已关闭",
     heroSummaryInline: "默认页内显示翻译与语法提示。",
     heroSummarySplit: "默认在右侧侧边面板显示结果。",
-    labelEnabled: "启用划词翻译",
+    labelThemeColor: "主题配色",
     labelTargetLanguage: "目标语言",
     labelResultDisplayMode: "结果展示方式",
     modeSplit: "侧边模式",
@@ -40,7 +40,7 @@ const I18N = {
     heroChipGrammarOff: "Grammar off",
     heroSummaryInline: "Show translation and grammar inline.",
     heroSummarySplit: "Show results in the right side panel by default.",
-    labelEnabled: "Enable Selection Translate",
+    labelThemeColor: "Theme",
     labelTargetLanguage: "Target Language",
     labelResultDisplayMode: "Result Display Mode",
     modeSplit: "Side Panel",
@@ -65,16 +65,24 @@ async function initialize() {
   }
 
   const settings = response.data;
-  applyThemeColor(settings.themeColor || settings.themePreset || DEFAULT_THEME_COLOR);
+  const themeColor = normalizeThemeColor(settings.themeColor || settings.themePreset || DEFAULT_THEME_COLOR);
+  applyThemeColor(themeColor);
   applyLanguage(settings.uiLanguage || "zh-CN");
-  enabledInput.checked = Boolean(settings.enabled);
+  syncThemeButtons(themeColor);
   targetLanguageSelect.value = settings.targetLanguage || "zh-CN";
   ttsEnabledInput.checked = Boolean(settings.ttsEnabled);
   grammarHintsEnabledInput.checked = Boolean(settings.grammarHintsEnabled);
   syncDisplayMode(settings.resultDisplayMode === "inline" ? "inline" : "split");
 
-  enabledInput.addEventListener("change", persist);
   targetLanguageSelect.addEventListener("change", persist);
+  themeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const themeColor = normalizeThemeColor(button.dataset.themeColor);
+      applyThemeColor(themeColor);
+      syncThemeButtons(themeColor);
+      void persist();
+    });
+  });
   modeButtons.forEach((button) => {
     button.addEventListener("click", () => {
       syncDisplayMode(button.dataset.mode === "inline" ? "inline" : "split");
@@ -92,7 +100,9 @@ async function initialize() {
       return;
     }
     if ("themeColor" in changes || "themePreset" in changes) {
-      applyThemeColor(changes.themeColor?.newValue || changes.themePreset?.newValue || DEFAULT_THEME_COLOR);
+      const themeColor = normalizeThemeColor(changes.themeColor?.newValue || changes.themePreset?.newValue || DEFAULT_THEME_COLOR);
+      applyThemeColor(themeColor);
+      syncThemeButtons(themeColor);
     }
     if ("uiLanguage" in changes) {
       applyLanguage(changes.uiLanguage.newValue || "zh-CN");
@@ -111,8 +121,8 @@ async function persist() {
   const response = await chrome.runtime.sendMessage({
     type: "SAVE_SETTINGS",
     payload: {
-      enabled: enabledInput.checked,
       targetLanguage: targetLanguageSelect.value,
+      themeColor: getCurrentThemeColor(),
       resultDisplayMode: getCurrentDisplayMode(),
       ttsEnabled: ttsEnabledInput.checked,
       grammarHintsEnabled: grammarHintsEnabledInput.checked
@@ -134,7 +144,7 @@ function applyLanguage(language) {
   setText("heroTitle", copy.heroTitle);
   setText("heroTabPrimary", copy.heroTabPrimary);
   setText("heroTabSecondary", copy.heroTabSecondary);
-  setText("labelEnabled", copy.labelEnabled);
+  setText("labelThemeColor", copy.labelThemeColor);
   setText("labelTargetLanguage", copy.labelTargetLanguage);
   setText("labelResultDisplayMode", copy.labelResultDisplayMode);
   setText("modeSplit", copy.modeSplit);
@@ -175,6 +185,20 @@ function syncDisplayMode(mode) {
 
 function getCurrentDisplayMode() {
   return document.documentElement.dataset.popupDisplayMode === "inline" ? "inline" : "split";
+}
+
+function syncThemeButtons(color) {
+  const currentColor = normalizeThemeColor(color);
+  themeButtons.forEach((button) => {
+    const isActive = normalizeThemeColor(button.dataset.themeColor) === currentColor;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+  document.documentElement.dataset.popupThemeColor = currentColor;
+}
+
+function getCurrentThemeColor() {
+  return normalizeThemeColor(document.documentElement.dataset.popupThemeColor || DEFAULT_THEME_COLOR);
 }
 
 function setText(id, value) {
