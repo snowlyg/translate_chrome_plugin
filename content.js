@@ -32,6 +32,7 @@ let pageActivationState = {
   ready: false,
   enabled: true
 };
+let currentGrammarHintsEnabled = true;
 let grammarHintState = {
   target: null,
   text: "",
@@ -53,6 +54,13 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if ("resultDisplayMode" in changes) {
     currentResultDisplayMode = changes.resultDisplayMode.newValue === "split" ? "split" : "inline";
     handleResultDisplayModeChange();
+  }
+  if ("grammarHintsEnabled" in changes) {
+    currentGrammarHintsEnabled = changes.grammarHintsEnabled.newValue !== false;
+    if (!currentGrammarHintsEnabled) {
+      hideInputGrammarHint();
+      removeRenderedGrammarHints();
+    }
   }
   if (!("enabled" in changes) && !("siteAccessMode" in changes) && !("siteWhitelist" in changes) && !("siteBlacklist" in changes)) {
     return;
@@ -168,7 +176,7 @@ function handleMouseUp() {
 }
 
 function handleFocusIn(event) {
-  if (!isExtensionActiveOnPage()) {
+  if (!isExtensionActiveOnPage() || !currentGrammarHintsEnabled) {
     hideInputGrammarHint();
     return;
   }
@@ -199,7 +207,7 @@ function handleFocusOut(event) {
 }
 
 function handleTextInput(event) {
-  if (!isExtensionActiveOnPage()) {
+  if (!isExtensionActiveOnPage() || !currentGrammarHintsEnabled) {
     hideInputGrammarHint();
     return;
   }
@@ -690,7 +698,11 @@ function renderInlineActionBar(payload) {
 }
 
 function renderInlineGrammarBlock(grammar) {
-  if (!grammar?.issues?.length) {
+  if (!grammar) {
+    return "";
+  }
+
+  if (!grammar.issues?.length) {
     return `
       <div class="st-inline-grammar">
         <div class="st-inline-grammar-title">语法检查</div>
@@ -795,11 +807,18 @@ async function refreshPageActivationState() {
     const settings = response?.ok ? response.data : null;
     pageActivationState.ready = true;
     pageActivationState.enabled = isPageEnabledByRules(settings, window.location.href);
+    currentGrammarHintsEnabled = settings?.grammarHintsEnabled !== false;
     currentResultDisplayMode = settings?.resultDisplayMode === "split" ? "split" : "inline";
   } catch (_error) {
     pageActivationState.ready = true;
     pageActivationState.enabled = true;
+    currentGrammarHintsEnabled = true;
     currentResultDisplayMode = "inline";
+  }
+
+  if (!currentGrammarHintsEnabled) {
+    removeRenderedGrammarHints();
+    hideInputGrammarHint();
   }
 
   if (!pageActivationState.enabled) {
@@ -891,6 +910,11 @@ function isEditableSelectionTarget(target) {
 }
 
 function scheduleGrammarHintCheck(target) {
+  if (!currentGrammarHintsEnabled) {
+    hideInputGrammarHint();
+    return;
+  }
+
   const text = getEditableText(target);
   const normalized = normalizeInputGrammarText(text);
   grammarHintState.text = normalized;
@@ -912,6 +936,11 @@ function scheduleGrammarHintCheck(target) {
 }
 
 async function requestGrammarHint(target, text) {
+  if (!currentGrammarHintsEnabled) {
+    hideInputGrammarHint();
+    return;
+  }
+
   const requestId = ++grammarHintState.requestId;
 
   try {
@@ -921,6 +950,11 @@ async function requestGrammarHint(target, text) {
     });
 
     if (requestId !== grammarHintState.requestId || grammarHintState.target !== target) {
+      return;
+    }
+
+    if (!currentGrammarHintsEnabled) {
+      hideInputGrammarHint();
       return;
     }
 
@@ -1498,6 +1532,12 @@ function renderGrammar(grammar) {
       </div>
     </div>
   `;
+}
+
+function removeRenderedGrammarHints() {
+  document.querySelectorAll(`#${PANEL_ID} .st-grammar, .st-inline-grammar`).forEach((node) => {
+    node.remove();
+  });
 }
 
 function renderDictionary(dictionary) {
@@ -2235,6 +2275,8 @@ function injectStyles() {
       --st-accent-strong-rgb: 29, 78, 216;
       --st-accent-soft-rgb: 96, 165, 250;
       --st-accent-glow-rgb: 191, 219, 254;
+      --st-brand-green: #0f766e;
+      --st-brand-green-rgb: 15, 118, 110;
     }
     html[data-st-docked="true"],
     html[data-st-docked="true"] body {
@@ -2260,12 +2302,13 @@ function injectStyles() {
       border-right: 0;
       border-bottom: 0;
       background:
-        radial-gradient(circle at top right, rgba(var(--st-accent-glow-rgb), 0.28), transparent 30%),
-        linear-gradient(180deg, rgba(252, 253, 255, 0.99) 0%, rgba(255, 255, 255, 0.99) 100%);
+        radial-gradient(circle at 92% 8%, rgba(var(--st-brand-green-rgb), 0.12), transparent 28%),
+        radial-gradient(circle at 12% 10%, rgba(var(--st-accent-rgb), 0.12), transparent 30%),
+        linear-gradient(135deg, rgba(246, 251, 255, 0.99) 0%, rgba(238, 245, 255, 0.99) 48%, rgba(248, 251, 255, 0.99) 100%);
       box-shadow:
-        -14px 0 36px rgba(15, 23, 42, 0.08);
+        -14px 0 36px rgba(25, 46, 88, 0.1);
       color: #0f172a;
-      font: 14px/1.6 "Iowan Old Style", "Palatino Linotype", "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+      font: 14px/1.6 "Avenir Next", "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
       overflow: auto;
       backdrop-filter: blur(18px);
     }
@@ -2277,7 +2320,7 @@ function injectStyles() {
       border-radius: 22px;
       border: 1px solid rgba(226, 232, 240, 0.95);
       box-shadow:
-        0 24px 60px rgba(15, 23, 42, 0.12),
+        0 24px 60px rgba(25, 46, 88, 0.14),
         0 2px 10px rgba(15, 23, 42, 0.05);
       overflow: hidden;
     }
@@ -2364,6 +2407,11 @@ function injectStyles() {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+    #${PANEL_ID} .st-mini-action:hover {
+      background: #eff6ff;
+      color: var(--st-accent-strong);
     }
     #${PANEL_ID} .st-close {
       font-size: 16px;
@@ -2375,7 +2423,7 @@ function injectStyles() {
       padding: 14px 14px 16px;
       border-radius: 16px;
       border: 1px solid rgba(226, 232, 240, 0.9);
-      background: rgba(248, 250, 252, 0.76);
+      background: rgba(255, 255, 255, 0.78);
       color: #475569;
       font-size: 13px;
       line-height: 1.78;
@@ -2428,7 +2476,7 @@ function injectStyles() {
     }
     #${PANEL_ID} .st-divider:hover::before,
     #${PANEL_ID}.resizing .st-divider::before {
-      background: rgba(var(--st-accent-rgb), 0.65);
+      background: linear-gradient(180deg, rgba(var(--st-accent-rgb), 0.78), rgba(var(--st-brand-green-rgb), 0.68));
     }
     #${PANEL_ID}[data-pane-state="closed"] .st-divider {
       display: none;
@@ -2498,7 +2546,7 @@ function injectStyles() {
     #${PANEL_ID} .st-icon-action.active {
       background: #eff6ff;
       color: var(--st-accent-strong);
-      border-color: rgba(var(--st-accent-soft-rgb), 0.95);
+      border-color: rgba(var(--st-brand-green-rgb), 0.28);
       opacity: 1;
     }
     #${PANEL_ID} .st-secondary-action {
@@ -2513,8 +2561,8 @@ function injectStyles() {
       transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
     }
     #${PANEL_ID} .st-secondary-action:hover {
-      background: #dbeafe;
-      border-color: rgba(var(--st-accent-soft-rgb), 0.95);
+      background: #e7f8f2;
+      border-color: rgba(var(--st-brand-green-rgb), 0.3);
       color: var(--st-accent-strong);
     }
     #${PANEL_ID} .st-tab {
@@ -2535,9 +2583,9 @@ function injectStyles() {
     }
     #${PANEL_ID} .st-translation {
       font-size: 17px;
-      font-weight: 600;
+      font-weight: 700;
       line-height: 1.82;
-      letter-spacing: 0.01em;
+      letter-spacing: 0;
       color: #111827;
       white-space: pre-wrap;
       word-break: break-word;
@@ -2553,7 +2601,7 @@ function injectStyles() {
       top: 4px;
       bottom: 4px;
       width: 1px;
-      background: linear-gradient(180deg, rgba(191, 219, 254, 0.9) 0%, rgba(226, 232, 240, 0.65) 100%);
+      background: linear-gradient(180deg, rgba(var(--st-accent-rgb), 0.72), rgba(var(--st-brand-green-rgb), 0.42));
     }
     #${PANEL_ID} .st-kicker {
       margin-bottom: 8px;
@@ -2598,7 +2646,7 @@ function injectStyles() {
     #${PANEL_ID} .st-grammar-title::before {
       content: "✓";
       margin-right: 6px;
-      color: var(--st-accent-soft);
+      color: var(--st-brand-green);
     }
     #${PANEL_ID} .st-grammar-list {
       display: grid;
@@ -2639,7 +2687,7 @@ function injectStyles() {
     #${PANEL_ID} .st-dictionary-title::before {
       content: "§";
       margin-right: 6px;
-      color: #94a3b8;
+      color: var(--st-brand-green);
     }
     #${PANEL_ID} .st-phonetics {
       display: flex;
@@ -2674,7 +2722,7 @@ function injectStyles() {
       top: 2px;
       bottom: 2px;
       width: 1px;
-      background: rgba(226, 232, 240, 0.96);
+      background: rgba(var(--st-accent-glow-rgb), 0.96);
     }
     #${PANEL_ID} .st-dictionary-item::after {
       content: "";
@@ -2684,7 +2732,7 @@ function injectStyles() {
       width: 5px;
       height: 5px;
       border-radius: 999px;
-      background: rgba(191, 219, 254, 0.95);
+      background: rgba(var(--st-brand-green-rgb), 0.72);
     }
     #${PANEL_ID} .st-pos {
       margin-bottom: 7px;
@@ -2707,16 +2755,17 @@ function injectStyles() {
     }
     .st-inline-translation {
       margin: 6px 0 12px;
-      padding: 9px 12px 10px;
-      border-left: 3px solid rgba(var(--st-accent-rgb), 0.62);
-      background: linear-gradient(180deg, rgba(239, 246, 255, 0.56) 0%, rgba(248, 250, 252, 0.78) 100%);
-      border-radius: 0 10px 10px 0;
+      padding: 14px 16px;
+      border-left: 4px solid var(--st-accent);
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 0.94));
+      border-radius: 0 18px 18px 0;
+      box-shadow: 0 18px 34px rgba(var(--st-accent-rgb), 0.14);
       color: #1f2937;
-      font: 14px/1.8 "SF Pro Text", "PingFang SC", "Noto Sans SC", sans-serif;
+      font: 14px/1.8 "Avenir Next", "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
     }
     .st-inline-translation[data-state="loading"] {
       border-left-color: rgba(var(--st-accent-rgb), 0.45);
-      background: linear-gradient(180deg, rgba(239, 246, 255, 0.4) 0%, rgba(248, 250, 252, 0.94) 100%);
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.76), rgba(255, 255, 255, 0.94));
     }
     .st-inline-translation[data-state="error"] {
       border-left-color: rgba(220, 38, 38, 0.42);
@@ -2777,7 +2826,7 @@ function injectStyles() {
     .st-inline-icon-action.active {
       background: #eff6ff;
       color: var(--st-accent-strong);
-      border-color: rgba(var(--st-accent-soft-rgb), 0.95);
+      border-color: rgba(var(--st-brand-green-rgb), 0.28);
     }
     .st-inline-secondary-action {
       border: 1px solid rgba(var(--st-accent-glow-rgb), 0.9);
@@ -2791,11 +2840,11 @@ function injectStyles() {
       transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
     }
     .st-inline-secondary-action:hover {
-      background: #dbeafe;
-      border-color: rgba(var(--st-accent-soft-rgb), 0.95);
+      background: #e7f8f2;
+      border-color: rgba(var(--st-brand-green-rgb), 0.3);
     }
     .st-inline-secondary-action.expanded {
-      background: rgba(219, 234, 254, 0.95);
+      background: rgba(231, 248, 242, 0.95);
     }
     .st-inline-grammar {
       margin-top: 12px;
@@ -2905,10 +2954,11 @@ function injectStyles() {
       padding: 18px 18px 16px;
       overflow: auto;
       background:
-        radial-gradient(circle at top right, rgba(var(--st-accent-glow-rgb), 0.24), transparent 30%),
-        linear-gradient(180deg, rgba(252, 253, 255, 0.99) 0%, rgba(255, 255, 255, 0.99) 100%);
+        radial-gradient(circle at 92% 8%, rgba(var(--st-brand-green-rgb), 0.12), transparent 28%),
+        radial-gradient(circle at 12% 10%, rgba(var(--st-accent-rgb), 0.12), transparent 30%),
+        linear-gradient(135deg, rgba(246, 251, 255, 0.99) 0%, rgba(238, 245, 255, 0.99) 48%, rgba(248, 251, 255, 0.99) 100%);
       border-left: 1px solid rgba(226, 232, 240, 0.95);
-      box-shadow: -14px 0 36px rgba(15, 23, 42, 0.08);
+      box-shadow: -14px 0 36px rgba(25, 46, 88, 0.1);
     }
     #${INPUT_HINT_ID}[data-display-mode="inline"] {
       top: auto;
@@ -2919,13 +2969,13 @@ function injectStyles() {
       border-radius: 22px;
       border: 1px solid rgba(226, 232, 240, 0.95);
       box-shadow:
-        0 20px 48px rgba(15, 23, 42, 0.14),
+        0 20px 48px rgba(25, 46, 88, 0.14),
         0 2px 10px rgba(15, 23, 42, 0.06);
     }
     #${INPUT_HINT_ID} .st-input-hint-card {
       padding: 0;
       color: #0f172a;
-      font: 13px/1.7 "SF Pro Text", "PingFang SC", "Noto Sans SC", sans-serif;
+      font: 13px/1.7 "Avenir Next", "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
     }
     #${INPUT_HINT_ID} .st-input-head {
       display: flex;
@@ -2945,7 +2995,7 @@ function injectStyles() {
       color: var(--st-accent-strong);
     }
     #${INPUT_HINT_ID} .st-input-status.is-clean {
-      color: #15803d;
+      color: var(--st-brand-green);
     }
     #${INPUT_HINT_ID} .st-input-status.has-error {
       color: #b42318;
@@ -3004,13 +3054,13 @@ function injectStyles() {
       height: 16px;
     }
     #${INPUT_HINT_ID} .st-input-copy:hover {
-      background: #dbeafe;
+      background: #e7f8f2;
       color: var(--st-accent-strong);
     }
     #${INPUT_HINT_ID} .st-input-copy.copied {
-      background: #dcfce7;
-      color: #15803d;
-      border-color: rgba(134, 239, 172, 0.96);
+      background: #e7f8f2;
+      color: var(--st-brand-green);
+      border-color: rgba(var(--st-brand-green-rgb), 0.3);
     }
     #${INPUT_HINT_ID} .st-input-plain {
       color: #0f172a;
@@ -3022,8 +3072,8 @@ function injectStyles() {
       border-radius: 4px;
     }
     #${INPUT_HINT_ID} .st-input-add {
-      color: #15803d;
-      background: rgba(220, 252, 231, 0.85);
+      color: var(--st-brand-green);
+      background: rgba(231, 248, 242, 0.9);
       border-radius: 4px;
     }
     #${INPUT_HINT_ID} .st-input-explain {
