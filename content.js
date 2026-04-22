@@ -39,6 +39,7 @@ let grammarHintState = {
   timer: null,
   requestId: 0
 };
+let disableSiteCloseTimer = null;
 
 injectStyles();
 void loadThemePreset();
@@ -78,6 +79,8 @@ document.addEventListener("keydown", (event) => {
     hideInputGrammarHint();
   }
 });
+document.addEventListener("mousedown", handleDisableSitePointerDown, true);
+document.addEventListener("click", handleDisableSiteClick, true);
 document.addEventListener("mousedown", (event) => {
   const panel = getPanel();
   if (panel && !panel.contains(event.target)) {
@@ -235,6 +238,12 @@ async function openPanel(text, rect, options = {}) {
   positionPanel(panel, rect);
   panel.innerHTML = renderLoading(options.sourcePreview || text, options);
   initializePanelLayout(panel);
+  bindActions(panel, {
+    results: [],
+    dictionary: null,
+    ttsEnabled: false,
+    panelTitle: options.panelTitle || "划词翻译"
+  });
 
   try {
     const response = options.requestType === "TRANSLATE_IMAGE"
@@ -544,6 +553,7 @@ async function translateSelectionInline(rawText, range) {
     text: "翻译中...",
     state: "loading"
   });
+  bindInlineTranslationActions(translationNode, null);
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -558,6 +568,7 @@ async function translateSelectionInline(rawText, range) {
         text: "翻译失败，请重试",
         state: "error"
       }, translationNode);
+      bindInlineTranslationActions(translationNode, null);
       return;
     }
 
@@ -575,6 +586,7 @@ async function translateSelectionInline(rawText, range) {
       text: "翻译失败，请重试",
       state: "error"
     }, translationNode);
+    bindInlineTranslationActions(translationNode, null);
   }
 }
 
@@ -652,12 +664,14 @@ function renderInlineTranslationState(node, payload, existingNode) {
   translationNode.dataset.state = payload.state || "success";
   const details = payload.payload || null;
   const extraHtml = payload.extraHtml || [
-    renderInlineActionBar(details),
     renderInlineGrammarBlock(details?.grammar || null),
     renderInlineDictionaryDetails(details?.dictionary || null)
   ].filter(Boolean).join("");
   translationNode.innerHTML = `
-    <div class="st-inline-kicker">${escapeHtml(payload.title || "译文")}</div>
+    <div class="st-inline-head">
+      <div class="st-inline-kicker">${escapeHtml(payload.title || "译文")}</div>
+      ${renderInlineActionBar(details)}
+    </div>
     <div class="st-inline-text">${escapeHtml(payload.text || "")}</div>
     ${extraHtml}
   `;
@@ -670,11 +684,11 @@ function renderInlineTranslationState(node, payload, existingNode) {
 }
 
 function renderInlineActionBar(payload) {
-  if (!payload || (payload.ttsEnabled !== true && !payload.dictionary)) {
-    return "";
+  if (!payload) {
+    return `<div class="st-inline-actions">${renderDisableSiteButton("st-inline-secondary-action")}</div>`;
   }
 
-  const actions = [];
+  const actions = [renderDisableSiteButton("st-inline-secondary-action")];
   if (payload.ttsEnabled) {
     actions.push(`
       <button class="st-inline-icon-action" data-action="play-inline" type="button" aria-label="播放原文" title="播放原文">
@@ -760,7 +774,11 @@ function renderInlineDictionaryDetails(dictionary) {
 }
 
 function bindInlineTranslationActions(node, payload) {
-  if (!(node instanceof Element) || !payload) {
+  if (!(node instanceof Element)) {
+    return;
+  }
+
+  if (!payload) {
     return;
   }
 
@@ -822,13 +840,138 @@ async function refreshPageActivationState() {
   }
 
   if (!pageActivationState.enabled) {
-    removePanel();
-    hideInputGrammarHint();
+    if (disableSiteCloseTimer) {
+      return;
+    }
+    closeTransientUi();
   }
 }
 
 function isExtensionActiveOnPage() {
   return !pageActivationState.ready || pageActivationState.enabled;
+}
+
+function getDisableSiteButtonFromEvent(event) {
+  const target = event.target;
+  const button = target?.nodeType === 1
+    ? target.closest("[data-action='disable-site']")
+    : null;
+  return button?.tagName === "BUTTON" ? button : null;
+}
+
+function handleDisableSitePointerDown(event) {
+  const button = getDisableSiteButtonFromEvent(event);
+  if (!button) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function handleDisableSiteClick(event) {
+  const button = getDisableSiteButtonFromEvent(event);
+  if (!button) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  void disableCurrentSiteFromInlineControl(button);
+}
+
+function getCurrentSiteRule() {
+  try {
+    const url = new URL(window.location.href);
+    if (!/^https?:$/.test(url.protocol)) {
+      return "";
+    }
+    return url.hostname.replace(/^www\./i, "").toLowerCase();
+  } catch (_error) {
+    return "";
+  }
+}
+
+async function disableCurrentSiteFromInlineControl(button) {
+  if (!button || button.tagName !== "BUTTON") {
+    return;
+  }
+  if (button.dataset.state === "saving" || button.dataset.state === "success") {
+    return;
+  }
+
+  const siteRule = getCurrentSiteRule();
+  if (!siteRule) {
+    setDisableSiteButtonState(button, "unavailable", "当前页面不可禁用");
+    button.disabled = true;
+    return;
+  }
+
+  setDisableSiteButtonState(button, "saving", "正在禁用...");
+
+  try {
+    const currentBlacklist = await getCurrentSiteBlacklist();
+    const blacklist = parseSiteRules(currentBlacklist);
+    const nextBlacklist = matchesSiteRules(blacklist, window.location.href)
+      ? blacklist.join("\n")
+      : [...blacklist, siteRule].join("\n");
+    await saveCurrentSiteBlacklist(nextBlacklist);
+
+    setDisableSiteButtonState(button, "success", "本站已禁用");
+    pageActivationState.enabled = false;
+    if (disableSiteCloseTimer) {
+      window.clearTimeout(disableSiteCloseTimer);
+    }
+    disableSiteCloseTimer = window.setTimeout(() => {
+      disableSiteCloseTimer = null;
+      closeTransientUi();
+    }, 900);
+  } catch (_error) {
+    setDisableSiteButtonState(button, "error", "禁用失败，请重试");
+    window.setTimeout(() => {
+      if (button.isConnected && button.dataset.state === "error") {
+        setDisableSiteButtonState(button, "idle", "禁用本站");
+      }
+    }, 1600);
+  }
+}
+
+async function getCurrentSiteBlacklist() {
+  try {
+    const payload = await chrome.storage.sync.get({ siteBlacklist: "" });
+    return payload?.siteBlacklist || "";
+  } catch (_error) {
+    const response = await chrome.runtime.sendMessage({ type: "GET_SETTINGS" });
+    if (!response?.ok) {
+      throw new Error(response?.error || "Get settings failed");
+    }
+    return response.data?.siteBlacklist || "";
+  }
+}
+
+async function saveCurrentSiteBlacklist(siteBlacklist) {
+  try {
+    await chrome.storage.sync.set({ siteBlacklist });
+    return;
+  } catch (_error) {
+    const response = await chrome.runtime.sendMessage({
+      type: "SAVE_SETTINGS",
+      payload: {
+        siteBlacklist
+      }
+    });
+    if (!response?.ok) {
+      throw new Error(response?.error || "Save failed");
+    }
+  }
+}
+
+function setDisableSiteButtonState(button, state, text) {
+  button.dataset.state = state;
+  button.textContent = text;
+  button.disabled = state === "saving" || state === "success" || state === "unavailable";
+  button.classList.toggle("is-success", state === "success");
+  button.classList.toggle("is-error", state === "error");
 }
 
 function isPageEnabledByRules(settings, rawUrl) {
@@ -1000,8 +1143,11 @@ function renderInputGrammarHint(target, sourceText, grammar) {
   hint.innerHTML = `
     <div class="st-input-hint-card">
       <div class="st-input-head">
-        <img class="st-input-logo" src="${LOGO_URL}" alt="极简翻译 logo">
-        <div class="st-input-status ${statusClass}">${escapeHtml(status)}</div>
+        <div class="st-input-head-main">
+          <img class="st-input-logo" src="${LOGO_URL}" alt="极简翻译 logo">
+          <div class="st-input-status ${statusClass}">${escapeHtml(status)}</div>
+        </div>
+        ${renderDisableSiteButton("st-input-disable")}
       </div>
       <div class="st-input-shell">
         <section class="st-input-panel">
@@ -1046,8 +1192,11 @@ function showInputGrammarHintLoading(target) {
   hint.innerHTML = `
     <div class="st-input-hint-card">
       <div class="st-input-head">
-        <img class="st-input-logo" src="${LOGO_URL}" alt="极简翻译 logo">
-        <div class="st-input-status">正在检查英文语法...</div>
+        <div class="st-input-head-main">
+          <img class="st-input-logo" src="${LOGO_URL}" alt="极简翻译 logo">
+          <div class="st-input-status">正在检查英文语法...</div>
+        </div>
+        ${renderDisableSiteButton("st-input-disable")}
       </div>
     </div>
   `;
@@ -1060,8 +1209,11 @@ function showInputGrammarHintError(target, message) {
   hint.innerHTML = `
     <div class="st-input-hint-card">
       <div class="st-input-head">
-        <img class="st-input-logo" src="${LOGO_URL}" alt="极简翻译 logo">
-        <div class="st-input-status has-error">${escapeHtml(message)}</div>
+        <div class="st-input-head-main">
+          <img class="st-input-logo" src="${LOGO_URL}" alt="极简翻译 logo">
+          <div class="st-input-status has-error">${escapeHtml(message)}</div>
+        </div>
+        ${renderDisableSiteButton("st-input-disable")}
       </div>
     </div>
   `;
@@ -1398,10 +1550,17 @@ function renderLoading(text, options = {}) {
       </div>
     </div>
     <section class="st-dock-body">
-      <div class="st-pane-label">原文</div>
-      <div class="st-source">${escapeHtml(text)}</div>
-      <div class="st-pane-label">状态</div>
-      <div class="st-loading">${escapeHtml(options.loadingMessage || "正在请求翻译服务...")}</div>
+      <section class="st-panel-card">
+        <div class="st-pane-label">原文</div>
+        <div class="st-source">${escapeHtml(text)}</div>
+      </section>
+      <section class="st-panel-card st-status-card">
+        <div>
+          <div class="st-pane-label">状态</div>
+          <div class="st-loading">${escapeHtml(options.loadingMessage || "正在请求翻译服务...")}</div>
+        </div>
+        <div class="st-actions">${renderDisableSiteButton("st-secondary-action")}</div>
+      </section>
     </section>
   `;
 }
@@ -1426,13 +1585,20 @@ function renderError(text, error, options = {}) {
       </div>
     </div>
     <section class="st-dock-body">
-      <div class="st-pane-label">原文</div>
-      <div class="st-source">${escapeHtml(text)}</div>
-      <div class="st-pane-label">状态</div>
-      <div class="st-error">${escapeHtml(error)}</div>
-      <div class="st-actions">
-        <button class="st-secondary-action" data-action="open-settings" type="button">打开设置</button>
-      </div>
+      <section class="st-panel-card">
+        <div class="st-pane-label">原文</div>
+        <div class="st-source">${escapeHtml(text)}</div>
+      </section>
+      <section class="st-panel-card st-status-card">
+        <div>
+          <div class="st-pane-label">状态</div>
+          <div class="st-error">${escapeHtml(error)}</div>
+        </div>
+        <div class="st-actions">
+          ${renderDisableSiteButton("st-secondary-action")}
+          <button class="st-secondary-action" data-action="open-settings" type="button">打开设置</button>
+        </div>
+      </section>
     </section>
   `;
 }
@@ -1444,17 +1610,18 @@ function renderResults(text, payload) {
     const label = item.providerLabel || item.provider;
     return `<button class="st-tab ${item.provider === primary?.provider ? "active" : ""}" data-provider="${escapeHtml(item.provider)}">${escapeHtml(label)}</button>`;
   }).join("");
-  const actions = payload.ttsEnabled
-    ? `<div class="st-actions">
-         <button class="st-icon-action" data-action="play" aria-label="播放原文" title="播放原文">
+  const actions = [
+    renderDisableSiteButton("st-secondary-action"),
+    payload.ttsEnabled
+      ? `<button class="st-icon-action" data-action="play" aria-label="播放原文" title="播放原文">
            <svg viewBox="0 0 24 24" aria-hidden="true">
              <path d="M5 10.5V13.5H8.4L12.8 17V7L8.4 10.5H5Z" fill="currentColor"/>
              <path d="M15.2 9.2C16.4 10 17.1 11.2 17.1 12.5C17.1 13.8 16.4 15 15.2 15.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
              <path d="M17 6.7C19 8.1 20.2 10.2 20.2 12.5C20.2 14.8 19 16.9 17 18.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
            </svg>
-         </button>
-       </div>`
-    : "";
+         </button>`
+      : ""
+  ].filter(Boolean).join("");
   const body = renderBody(primary, payload.dictionary, payload.grammar);
 
   return `
@@ -1476,18 +1643,26 @@ function renderResults(text, payload) {
       </div>
     </div>
     <section class="st-dock-body">
-      <div class="st-pane-label">原文</div>
-      <div class="st-source">${escapeHtml(text)}</div>
-      <div class="st-main-top">
+      <section class="st-panel-card">
+        <div class="st-pane-label">原文</div>
+        <div class="st-source">${escapeHtml(text)}</div>
+      </section>
+      <section class="st-panel-card st-result-card">
+        <div class="st-main-top">
         <div class="st-main-top-left">
           <div class="st-pane-label">结果</div>
           <div class="st-tabs">${tabs}</div>
         </div>
-        ${actions}
-      </div>
-      <div data-role="body">${body}</div>
+        <div class="st-actions">${actions}</div>
+        </div>
+        <div data-role="body">${body}</div>
+      </section>
     </section>
   `;
+}
+
+function renderDisableSiteButton(className) {
+  return `<button class="${className}" data-action="disable-site" type="button">禁用本站</button>`;
 }
 
 function renderBody(entry, dictionary, grammar) {
@@ -2268,6 +2443,12 @@ function injectStyles() {
   style.id = STYLE_ID;
   style.textContent = `
     :root {
+      --st-bg: #eef6ff;
+      --st-panel: rgba(255, 255, 255, 0.94);
+      --st-line: rgba(37, 99, 235, 0.18);
+      --st-hairline: rgba(17, 24, 39, 0.08);
+      --st-text: #111827;
+      --st-muted: #667085;
       --st-accent: #2563eb;
       --st-accent-strong: #1d4ed8;
       --st-accent-soft: #60a5fa;
@@ -2295,20 +2476,20 @@ function injectStyles() {
       bottom: 0;
       width: var(--st-dock-width, 420px);
       max-height: none;
-      padding: 18px 18px 16px;
+      padding: 12px;
       border-radius: 0;
-      border-left: 1px solid rgba(226, 232, 240, 0.95);
+      border-left: 1px solid var(--st-line);
       border-top: 0;
       border-right: 0;
       border-bottom: 0;
       background:
-        radial-gradient(circle at 92% 8%, rgba(var(--st-brand-green-rgb), 0.12), transparent 28%),
-        radial-gradient(circle at 12% 10%, rgba(var(--st-accent-rgb), 0.12), transparent 30%),
-        linear-gradient(135deg, rgba(246, 251, 255, 0.99) 0%, rgba(238, 245, 255, 0.99) 48%, rgba(248, 251, 255, 0.99) 100%);
+        radial-gradient(circle at 12% 10%, rgba(var(--st-accent-rgb), 0.16), transparent 28%),
+        radial-gradient(circle at 92% 8%, rgba(var(--st-brand-green-rgb), 0.14), transparent 24%),
+        linear-gradient(135deg, #f6fbff 0%, #eef5ff 46%, #f8fbff 100%);
       box-shadow:
         -14px 0 36px rgba(25, 46, 88, 0.1);
-      color: #0f172a;
-      font: 14px/1.6 "Avenir Next", "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+      color: var(--st-text);
+      font: 13px/1.45 "Avenir Next", "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
       overflow: auto;
       backdrop-filter: blur(18px);
     }
@@ -2316,11 +2497,11 @@ function injectStyles() {
       position: fixed;
       width: min(520px, calc(100vw - 24px));
       max-height: calc(100vh - 24px);
-      padding: 18px 18px 16px;
-      border-radius: 22px;
-      border: 1px solid rgba(226, 232, 240, 0.95);
+      padding: 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(117, 135, 166, 0.22);
       box-shadow:
-        0 24px 60px rgba(25, 46, 88, 0.14),
+        0 14px 32px rgba(25, 46, 88, 0.1),
         0 2px 10px rgba(15, 23, 42, 0.05);
       overflow: hidden;
     }
@@ -2338,14 +2519,15 @@ function injectStyles() {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 10px;
       margin-bottom: 10px;
-      opacity: 0.58;
-      transition: opacity 140ms ease;
-    }
-    #${PANEL_ID}:hover .st-head,
-    #${PANEL_ID}:focus-within .st-head {
-      opacity: 0.95;
+      padding: 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(117, 135, 166, 0.22);
+      background:
+        radial-gradient(circle at top right, rgba(var(--st-brand-green-rgb), 0.1), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(248, 251, 255, 0.98) 100%);
+      box-shadow: 0 14px 32px rgba(25, 46, 88, 0.1);
     }
     #${PANEL_ID} .st-drag-handle {
       display: flex;
@@ -2355,11 +2537,11 @@ function injectStyles() {
       cursor: default;
     }
     #${PANEL_ID} .st-logo {
-      width: 18px;
-      height: 18px;
-      border-radius: 5px;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
       flex-shrink: 0;
-      box-shadow: 0 6px 12px rgba(var(--st-accent-rgb), 0.16);
+      box-shadow: 0 8px 14px rgba(12, 19, 54, 0.1);
     }
     #${PANEL_ID} .st-head-actions {
       display: flex;
@@ -2379,15 +2561,10 @@ function injectStyles() {
       background: rgba(100, 116, 139, 0.45);
     }
     #${PANEL_ID} .st-title {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      color: #64748b;
-      transition: color 140ms ease;
-    }
-    #${PANEL_ID}:hover .st-title,
-    #${PANEL_ID}:focus-within .st-title {
-      color: #475569;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: var(--st-text);
     }
     #${PANEL_ID} .st-mini-action,
     #${PANEL_ID} .st-close {
@@ -2398,12 +2575,13 @@ function injectStyles() {
       padding: 0;
     }
     #${PANEL_ID} .st-mini-action {
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       font-size: 11px;
       border-radius: 999px;
-      background: rgba(248, 250, 252, 0.72);
-      color: #64748b;
+      border: 1px solid rgba(37, 99, 235, 0.14);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--st-muted);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -2420,17 +2598,38 @@ function injectStyles() {
     #${PANEL_ID} .st-source {
       max-height: min(52vh, 420px);
       overflow: auto;
-      padding: 14px 14px 16px;
-      border-radius: 16px;
-      border: 1px solid rgba(226, 232, 240, 0.9);
-      background: rgba(255, 255, 255, 0.78);
-      color: #475569;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--st-muted);
       font-size: 13px;
       line-height: 1.78;
       word-break: break-word;
     }
     #${PANEL_ID} .st-dock-body {
       min-width: 0;
+      display: grid;
+      gap: 8px;
+    }
+    #${PANEL_ID} .st-panel-card {
+      min-width: 0;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid var(--st-hairline);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.92));
+      box-shadow: 0 10px 22px rgba(18, 23, 42, 0.06);
+    }
+    #${PANEL_ID} .st-result-card {
+      background:
+        radial-gradient(circle at top right, rgba(var(--st-brand-green-rgb), 0.08), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 251, 255, 0.94));
+    }
+    #${PANEL_ID} .st-status-card {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
     }
     #${PANEL_ID}[data-layout-mode="overlay"] .st-divider {
       display: none;
@@ -2439,8 +2638,8 @@ function injectStyles() {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
+      gap: 10px;
+      margin-bottom: 10px;
     }
     #${PANEL_ID} .st-main-top-left {
       min-width: 0;
@@ -2452,7 +2651,7 @@ function injectStyles() {
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #94a3b8;
+      color: var(--st-muted);
     }
     #${PANEL_ID} .st-divider {
       position: absolute;
@@ -2510,14 +2709,16 @@ function injectStyles() {
     }
     #${PANEL_ID} .st-actions {
       display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
       gap: 8px;
-      margin-bottom: 14px;
       flex-shrink: 0;
     }
     #${PANEL_ID} .st-icon-action {
-      border: 1px solid rgba(226, 232, 240, 0.96);
-      background: rgba(255, 255, 255, 0.84);
-      color: #475569;
+      border: 1px solid rgba(37, 99, 235, 0.14);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--st-muted);
       border-radius: 999px;
       width: 30px;
       height: 30px;
@@ -2550,66 +2751,78 @@ function injectStyles() {
       opacity: 1;
     }
     #${PANEL_ID} .st-secondary-action {
-      border: 1px solid rgba(var(--st-accent-glow-rgb), 0.9);
-      background: rgba(239, 246, 255, 0.9);
+      border: 1px solid rgba(37, 99, 235, 0.16);
+      background: rgba(255, 255, 255, 0.82);
       color: var(--st-accent-strong);
       border-radius: 999px;
-      padding: 7px 12px;
+      padding: 6px 10px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 800;
       cursor: pointer;
       transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
     }
     #${PANEL_ID} .st-secondary-action:hover {
-      background: #e7f8f2;
+      background: rgba(231, 248, 242, 0.95);
       border-color: rgba(var(--st-brand-green-rgb), 0.3);
       color: var(--st-accent-strong);
     }
+    #${PANEL_ID} .st-secondary-action:disabled,
+    .st-inline-secondary-action:disabled,
+    #${INPUT_HINT_ID} .st-input-disable:disabled {
+      cursor: default;
+      opacity: 0.76;
+    }
+    #${PANEL_ID} .st-secondary-action.is-success,
+    .st-inline-secondary-action.is-success,
+    #${INPUT_HINT_ID} .st-input-disable.is-success {
+      background: rgba(231, 248, 242, 0.95);
+      border-color: rgba(var(--st-brand-green-rgb), 0.3);
+      color: var(--st-brand-green);
+    }
+    #${PANEL_ID} .st-secondary-action.is-error,
+    .st-inline-secondary-action.is-error,
+    #${INPUT_HINT_ID} .st-input-disable.is-error {
+      background: rgba(254, 242, 242, 0.95);
+      border-color: rgba(180, 35, 24, 0.22);
+      color: #b42318;
+    }
     #${PANEL_ID} .st-tab {
-      border: 1px solid transparent;
-      background: rgba(248, 250, 252, 0.74);
-      color: #64748b;
-      border-radius: 999px;
+      border: 1px solid rgba(37, 99, 235, 0.14);
+      background: rgba(239, 246, 255, 0.78);
+      color: var(--st-muted);
+      border-radius: 10px;
       padding: 5px 11px;
       cursor: pointer;
       font-size: 12px;
+      font-weight: 800;
       line-height: 1.2;
     }
     #${PANEL_ID} .st-tab.active {
-      border-color: rgba(var(--st-accent-glow-rgb), 0.92);
-      background: rgba(239, 246, 255, 0.98);
+      border-color: transparent;
+      background: #ffffff;
       color: var(--st-accent-strong);
-      box-shadow: none;
+      box-shadow: 0 6px 14px rgba(25, 46, 88, 0.08);
     }
     #${PANEL_ID} .st-translation {
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 700;
-      line-height: 1.82;
+      line-height: 1.78;
       letter-spacing: 0;
-      color: #111827;
+      color: var(--st-text);
       white-space: pre-wrap;
       word-break: break-word;
     }
     #${PANEL_ID} .st-reading-block {
       position: relative;
-      padding-left: 14px;
-    }
-    #${PANEL_ID} .st-reading-block::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 4px;
-      bottom: 4px;
-      width: 1px;
-      background: linear-gradient(180deg, rgba(var(--st-accent-rgb), 0.72), rgba(var(--st-brand-green-rgb), 0.42));
+      padding: 0;
     }
     #${PANEL_ID} .st-kicker {
       margin-bottom: 8px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #94a3b8;
+      color: var(--st-muted);
     }
     #${PANEL_ID} .st-body-scroll {
       overflow: visible;
@@ -2621,27 +2834,31 @@ function injectStyles() {
       margin-top: 12px;
       font-size: 12px;
       line-height: 1.65;
-      color: #64748b;
+      color: var(--st-muted);
     }
     #${PANEL_ID} .st-error {
       color: #b42318;
     }
     #${PANEL_ID} .st-dictionary {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid rgba(226, 232, 240, 0.92);
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--st-hairline);
+      border-radius: 16px;
+      background: rgba(239, 246, 255, 0.46);
     }
     #${PANEL_ID} .st-grammar {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid rgba(226, 232, 240, 0.92);
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(37, 99, 235, 0.12);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.58), rgba(255, 255, 255, 0.82));
     }
     #${PANEL_ID} .st-grammar-title {
       margin-bottom: 10px;
       font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      color: #64748b;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--st-muted);
     }
     #${PANEL_ID} .st-grammar-title::before {
       content: "✓";
@@ -2654,15 +2871,15 @@ function injectStyles() {
     }
     #${PANEL_ID} .st-grammar-item {
       padding: 12px 14px;
-      border-radius: 16px;
-      background: rgba(248, 250, 252, 0.85);
-      border: 1px solid rgba(226, 232, 240, 0.92);
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1px solid rgba(37, 99, 235, 0.1);
     }
     #${PANEL_ID} .st-grammar-message {
       font-size: 13px;
       font-weight: 600;
       line-height: 1.6;
-      color: #1e3a8a;
+      color: var(--st-accent-strong);
     }
     #${PANEL_ID} .st-grammar-context,
     #${PANEL_ID} .st-grammar-suggestion,
@@ -2670,7 +2887,7 @@ function injectStyles() {
       margin-top: 6px;
       font-size: 12px;
       line-height: 1.7;
-      color: #475569;
+      color: var(--st-muted);
       white-space: pre-wrap;
       word-break: break-word;
     }
@@ -2700,8 +2917,9 @@ function injectStyles() {
       align-items: center;
       padding: 4px 9px;
       border-radius: 999px;
-      background: rgba(248, 250, 252, 0.96);
-      color: #64748b;
+      border: 1px solid var(--st-line);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--st-accent-strong);
       font-size: 12px;
     }
     #${PANEL_ID} .st-dictionary-list {
@@ -2710,36 +2928,17 @@ function injectStyles() {
     }
     #${PANEL_ID} .st-dictionary-item {
       position: relative;
-      padding: 0 0 0 14px;
-      border-radius: 0;
-      border: 0;
-      background: transparent;
-    }
-    #${PANEL_ID} .st-dictionary-item::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 2px;
-      bottom: 2px;
-      width: 1px;
-      background: rgba(var(--st-accent-glow-rgb), 0.96);
-    }
-    #${PANEL_ID} .st-dictionary-item::after {
-      content: "";
-      position: absolute;
-      left: -2px;
-      top: 9px;
-      width: 5px;
-      height: 5px;
-      border-radius: 999px;
-      background: rgba(var(--st-brand-green-rgb), 0.72);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--st-hairline);
+      background: #ffffff;
     }
     #${PANEL_ID} .st-pos {
       margin-bottom: 7px;
       font-size: 12px;
       font-weight: 600;
       letter-spacing: 0.03em;
-      color: #475569;
+      color: var(--st-muted);
       text-transform: lowercase;
     }
     #${PANEL_ID} .st-definition,
@@ -2747,32 +2946,40 @@ function injectStyles() {
     #${PANEL_ID} .st-synonyms {
       font-size: 13px;
       line-height: 1.72;
-      color: #334155;
+      color: var(--st-text);
     }
     #${PANEL_ID} .st-example,
     #${PANEL_ID} .st-synonyms {
       margin-top: 6px;
     }
     .st-inline-translation {
-      margin: 6px 0 12px;
-      padding: 14px 16px;
-      border-left: 4px solid var(--st-accent);
-      background: linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 0.94));
-      border-radius: 0 18px 18px 0;
-      box-shadow: 0 18px 34px rgba(var(--st-accent-rgb), 0.14);
-      color: #1f2937;
-      font: 14px/1.8 "Avenir Next", "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+      margin: 8px 0 12px;
+      padding: 12px;
+      border: 1px solid var(--st-hairline);
+      background:
+        radial-gradient(circle at top right, rgba(var(--st-brand-green-rgb), 0.08), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.92));
+      border-radius: 16px;
+      box-shadow: 0 10px 22px rgba(18, 23, 42, 0.06);
+      color: var(--st-text);
+      font: 13px/1.7 "Avenir Next", "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
     }
     .st-inline-translation[data-state="loading"] {
-      border-left-color: rgba(var(--st-accent-rgb), 0.45);
-      background: linear-gradient(180deg, rgba(239, 246, 255, 0.76), rgba(255, 255, 255, 0.94));
+      border-color: rgba(37, 99, 235, 0.12);
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.72), rgba(255, 255, 255, 0.9));
     }
     .st-inline-translation[data-state="error"] {
-      border-left-color: rgba(220, 38, 38, 0.42);
-      background: linear-gradient(180deg, rgba(254, 242, 242, 0.8) 0%, rgba(248, 250, 252, 0.96) 100%);
+      border-color: rgba(180, 35, 24, 0.16);
+      background: rgba(255, 255, 255, 0.94);
+    }
+    .st-inline-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
     }
     .st-inline-kicker {
-      margin-bottom: 4px;
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -2788,19 +2995,21 @@ function injectStyles() {
     .st-inline-text {
       white-space: pre-wrap;
       word-break: break-word;
-      color: #334155;
+      color: var(--st-text);
     }
     .st-inline-actions {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
+      justify-content: flex-end;
       gap: 8px;
-      margin-top: 12px;
+      margin-top: 0;
+      flex-shrink: 0;
     }
     .st-inline-icon-action {
-      border: 1px solid rgba(226, 232, 240, 0.96);
-      background: rgba(255, 255, 255, 0.9);
-      color: #475569;
+      border: 1px solid rgba(37, 99, 235, 0.14);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--st-muted);
       border-radius: 999px;
       width: 30px;
       height: 30px;
@@ -2829,27 +3038,29 @@ function injectStyles() {
       border-color: rgba(var(--st-brand-green-rgb), 0.28);
     }
     .st-inline-secondary-action {
-      border: 1px solid rgba(var(--st-accent-glow-rgb), 0.9);
-      background: rgba(239, 246, 255, 0.9);
+      border: 1px solid rgba(37, 99, 235, 0.16);
+      background: rgba(255, 255, 255, 0.82);
       color: var(--st-accent-strong);
       border-radius: 999px;
-      padding: 6px 12px;
+      padding: 5px 10px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 800;
       cursor: pointer;
       transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
     }
     .st-inline-secondary-action:hover {
-      background: #e7f8f2;
+      background: rgba(231, 248, 242, 0.95);
       border-color: rgba(var(--st-brand-green-rgb), 0.3);
     }
     .st-inline-secondary-action.expanded {
       background: rgba(231, 248, 242, 0.95);
     }
     .st-inline-grammar {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(226, 232, 240, 0.92);
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(37, 99, 235, 0.12);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.58), rgba(255, 255, 255, 0.82));
     }
     .st-inline-grammar-title {
       margin-bottom: 8px;
@@ -2857,7 +3068,7 @@ function injectStyles() {
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #64748b;
+      color: var(--st-muted);
     }
     .st-inline-grammar-list {
       display: grid;
@@ -2866,25 +3077,27 @@ function injectStyles() {
     .st-inline-grammar-item {
       padding: 10px 12px;
       border-radius: 12px;
-      background: rgba(255, 255, 255, 0.72);
-      border: 1px solid rgba(226, 232, 240, 0.92);
+      background: #ffffff;
+      border: 1px solid rgba(37, 99, 235, 0.1);
     }
     .st-inline-grammar-message {
       font-size: 13px;
       font-weight: 600;
-      color: #1e3a8a;
+      color: var(--st-accent-strong);
     }
     .st-inline-grammar-fix,
     .st-inline-grammar-empty {
       margin-top: 4px;
       font-size: 12px;
       line-height: 1.6;
-      color: #475569;
+      color: var(--st-muted);
     }
     .st-inline-dictionary {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(226, 232, 240, 0.92);
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--st-hairline);
+      border-radius: 12px;
+      background: rgba(239, 246, 255, 0.46);
     }
     .st-inline-dictionary-title {
       margin-bottom: 8px;
@@ -2892,7 +3105,7 @@ function injectStyles() {
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #64748b;
+      color: var(--st-muted);
     }
     .st-inline-phonetics {
       display: flex;
@@ -2905,8 +3118,9 @@ function injectStyles() {
       align-items: center;
       padding: 3px 8px;
       border-radius: 999px;
+      border: 1px solid var(--st-line);
       background: rgba(255, 255, 255, 0.82);
-      color: #64748b;
+      color: var(--st-accent-strong);
       font-size: 12px;
     }
     .st-inline-dictionary-list {
@@ -2916,15 +3130,15 @@ function injectStyles() {
     .st-inline-dictionary-item {
       padding: 10px 12px;
       border-radius: 12px;
-      background: rgba(255, 255, 255, 0.72);
-      border: 1px solid rgba(226, 232, 240, 0.92);
+      background: #ffffff;
+      border: 1px solid var(--st-hairline);
     }
     .st-inline-pos {
       margin-bottom: 6px;
       font-size: 12px;
       font-weight: 600;
       letter-spacing: 0.03em;
-      color: #475569;
+      color: var(--st-muted);
       text-transform: lowercase;
     }
     .st-inline-definition,
@@ -2932,7 +3146,7 @@ function injectStyles() {
     .st-inline-dictionary-empty {
       font-size: 12px;
       line-height: 1.7;
-      color: #334155;
+      color: var(--st-text);
     }
     .st-inline-example {
       margin-top: 5px;
@@ -2951,13 +3165,13 @@ function injectStyles() {
       right: 0;
       bottom: 0;
       width: var(--st-dock-width, 420px);
-      padding: 18px 18px 16px;
+      padding: 12px;
       overflow: auto;
       background:
-        radial-gradient(circle at 92% 8%, rgba(var(--st-brand-green-rgb), 0.12), transparent 28%),
-        radial-gradient(circle at 12% 10%, rgba(var(--st-accent-rgb), 0.12), transparent 30%),
-        linear-gradient(135deg, rgba(246, 251, 255, 0.99) 0%, rgba(238, 245, 255, 0.99) 48%, rgba(248, 251, 255, 0.99) 100%);
-      border-left: 1px solid rgba(226, 232, 240, 0.95);
+        radial-gradient(circle at 12% 10%, rgba(var(--st-accent-rgb), 0.16), transparent 28%),
+        radial-gradient(circle at 92% 8%, rgba(var(--st-brand-green-rgb), 0.14), transparent 24%),
+        linear-gradient(135deg, #f6fbff 0%, #eef5ff 46%, #f8fbff 100%);
+      border-left: 1px solid var(--st-line);
       box-shadow: -14px 0 36px rgba(25, 46, 88, 0.1);
     }
     #${INPUT_HINT_ID}[data-display-mode="inline"] {
@@ -2965,34 +3179,50 @@ function injectStyles() {
       right: auto;
       bottom: auto;
       width: min(520px, calc(100vw - 24px));
-      padding: 16px;
-      border-radius: 22px;
-      border: 1px solid rgba(226, 232, 240, 0.95);
+      padding: 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(117, 135, 166, 0.22);
       box-shadow:
-        0 20px 48px rgba(25, 46, 88, 0.14),
+        0 14px 32px rgba(25, 46, 88, 0.1),
         0 2px 10px rgba(15, 23, 42, 0.06);
     }
     #${INPUT_HINT_ID} .st-input-hint-card {
-      padding: 0;
-      color: #0f172a;
+      padding: 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(117, 135, 166, 0.22);
+      background:
+        radial-gradient(circle at top right, rgba(var(--st-brand-green-rgb), 0.08), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(248, 251, 255, 0.98) 100%);
+      box-shadow: 0 14px 32px rgba(25, 46, 88, 0.1);
+      color: var(--st-text);
       font: 13px/1.7 "Avenir Next", "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
     }
     #${INPUT_HINT_ID} .st-input-head {
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    #${INPUT_HINT_ID} .st-input-head-main {
+      min-width: 0;
+      display: flex;
+      align-items: center;
       gap: 8px;
     }
     #${INPUT_HINT_ID} .st-input-logo {
-      width: 18px;
-      height: 18px;
-      border-radius: 5px;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
       flex-shrink: 0;
-      box-shadow: 0 6px 12px rgba(var(--st-accent-rgb), 0.16);
+      box-shadow: 0 8px 14px rgba(12, 19, 54, 0.1);
     }
     #${INPUT_HINT_ID} .st-input-status {
       font-size: 12px;
       font-weight: 600;
       color: var(--st-accent-strong);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     #${INPUT_HINT_ID} .st-input-status.is-clean {
       color: var(--st-brand-green);
@@ -3003,8 +3233,8 @@ function injectStyles() {
     #${INPUT_HINT_ID} .st-input-preview {
       padding: 10px 12px;
       border-radius: 12px;
-      background: #f8fbff;
-      border: 1px solid rgba(226, 232, 240, 0.92);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--st-hairline);
       white-space: pre-wrap;
       word-break: break-word;
       min-height: 88px;
@@ -3012,15 +3242,23 @@ function injectStyles() {
     #${INPUT_HINT_ID} .st-input-shell {
       display: grid;
       grid-template-columns: minmax(180px, 0.88fr) minmax(0, 1.32fr);
-      gap: 14px;
+      gap: 8px;
       margin-top: 10px;
       align-items: start;
     }
     #${INPUT_HINT_ID} .st-input-panel {
       min-width: 0;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid var(--st-hairline);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.92));
+      box-shadow: 0 10px 22px rgba(18, 23, 42, 0.06);
     }
     #${INPUT_HINT_ID} .st-input-panel-main {
       min-width: 0;
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.58), rgba(255, 255, 255, 0.82));
+      border-color: rgba(37, 99, 235, 0.12);
     }
     #${INPUT_HINT_ID} .st-input-panel-top {
       display: flex;
@@ -3034,15 +3272,15 @@ function injectStyles() {
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #94a3b8;
+      color: var(--st-muted);
     }
     #${INPUT_HINT_ID} .st-input-copy {
       flex-shrink: 0;
-      width: 36px;
-      height: 36px;
-      border: 1px solid rgba(var(--st-accent-glow-rgb), 0.96);
-      border-radius: 10px;
-      background: #eff6ff;
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(37, 99, 235, 0.14);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
       color: var(--st-accent);
       display: inline-flex;
       align-items: center;
@@ -3062,18 +3300,36 @@ function injectStyles() {
       color: var(--st-brand-green);
       border-color: rgba(var(--st-brand-green-rgb), 0.3);
     }
+    #${INPUT_HINT_ID} .st-input-disable {
+      flex-shrink: 0;
+      border: 1px solid rgba(37, 99, 235, 0.16);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--st-accent-strong);
+      padding: 5px 10px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.2;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    #${INPUT_HINT_ID} .st-input-disable:hover {
+      background: #e7f8f2;
+      border-color: rgba(var(--st-brand-green-rgb), 0.3);
+    }
     #${INPUT_HINT_ID} .st-input-plain {
       color: #0f172a;
     }
     #${INPUT_HINT_ID} .st-input-delete {
       color: #dc2626;
-      background: rgba(254, 226, 226, 0.75);
+      background: rgba(254, 226, 226, 0.72);
       text-decoration: line-through;
       border-radius: 4px;
     }
     #${INPUT_HINT_ID} .st-input-add {
       color: var(--st-brand-green);
-      background: rgba(231, 248, 242, 0.9);
+      background: rgba(231, 248, 242, 0.92);
       border-radius: 4px;
     }
     #${INPUT_HINT_ID} .st-input-explain {
@@ -3081,24 +3337,26 @@ function injectStyles() {
       gap: 8px;
     }
     #${INPUT_HINT_ID} .st-input-issue {
-      padding-top: 8px;
-      border-top: 1px solid rgba(226, 232, 240, 0.92);
+      padding: 10px 12px;
+      border: 1px solid rgba(37, 99, 235, 0.1);
+      border-radius: 12px;
+      background: #ffffff;
     }
     #${INPUT_HINT_ID} .st-input-issue:first-child {
-      border-top: 0;
-      padding-top: 0;
+      border-top: 1px solid rgba(37, 99, 235, 0.1);
+      padding-top: 10px;
     }
     #${INPUT_HINT_ID} .st-input-issue-title {
       font-size: 12px;
       font-weight: 600;
-      color: #334155;
+      color: var(--st-text);
     }
     #${INPUT_HINT_ID} .st-input-issue-context,
     #${INPUT_HINT_ID} .st-input-issue-fix,
     #${INPUT_HINT_ID} .st-input-empty {
       margin-top: 4px;
       font-size: 12px;
-      color: #64748b;
+      color: var(--st-muted);
       white-space: pre-wrap;
       word-break: break-word;
     }
