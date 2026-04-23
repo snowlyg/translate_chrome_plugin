@@ -165,6 +165,9 @@
 ## 打包发布
 
 - 可运行 `scripts/package-release.ps1` 生成仅包含运行文件的 ZIP 发布包
+- 默认会提示选择版本升级类型，直接回车等同于 `patch`
+- 可用 `scripts/package-release.ps1 -Bump patch` 或 `scripts/package-release.ps1 -Version 0.1.1` 非交互升级版本
+- 脚本会同步更新 `manifest.json`、`README.md`、`README.en.md` 中的版本号
 - 默认输出路径为 `dist/minimal-translation-chrome-extension.zip`
 
 ## 维护说明

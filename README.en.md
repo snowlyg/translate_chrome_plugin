@@ -135,6 +135,14 @@ If you are installing the extension manually for the first time, the key step is
 - Domain rules like `example.com` match the domain and its subdomains
 - URL rules like `https://example.com/docs/*` are also supported
 
+## Release Packaging
+
+- Run `scripts/package-release.ps1` to generate a ZIP package with runtime files only
+- The script prompts for a version bump by default; pressing Enter uses `patch`
+- Use `scripts/package-release.ps1 -Bump patch` or `scripts/package-release.ps1 -Version 0.1.1` for non-interactive releases
+- The script updates the version in `manifest.json`, `README.md`, and `README.en.md`
+- The default output path is `dist/minimal-translation-chrome-extension.zip`
+
 ## Notes
 
 - Some websites with aggressive scripts or CSP rules may affect the floating panel behavior
