@@ -6,6 +6,7 @@ const PANEL_GAP = 12;
 const PANEL_EDGE = 12;
 const DOCK_OPEN_WIDTH = 420;
 const DOCK_COLLAPSED_WIDTH = 52;
+const DOCK_CLOSED_WIDTH = 44;
 const DOCK_LAYOUT_STORAGE_KEY = "dockLayout";
 const INLINE_TRANSLATION_ATTR = "data-st-inline-translation";
 const DEFAULT_THEME_COLOR = "#2563EB";
@@ -234,6 +235,9 @@ async function openPanel(text, rect, options = {}) {
   activeSelectionText = options.imageUrl || text;
   currentAnchorRect = rect;
   const panel = ensurePanel();
+  if ((panel.dataset.paneState || "open") !== "open") {
+    setPanelPaneState(panel, "open");
+  }
   panel.dataset.locked = "false";
   positionPanel(panel, rect);
   panel.innerHTML = renderLoading(options.sourcePreview || text, options);
@@ -296,7 +300,7 @@ function ensurePanel() {
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-live", "polite");
   panel.dataset.layoutMode = currentLayoutMode;
-  panel.dataset.paneState = dockLayoutState.paneState || "open";
+  panel.dataset.paneState = getDefaultDockPaneState();
   panel.style.setProperty("--st-dock-width", `${clampDockWidth(dockLayoutState.width || DOCK_OPEN_WIDTH)}px`);
   document.documentElement.appendChild(panel);
   bindDrag(panel);
@@ -684,12 +688,8 @@ function renderInlineTranslationState(node, payload, existingNode) {
 }
 
 function renderInlineActionBar(payload) {
-  if (!payload) {
-    return `<div class="st-inline-actions">${renderDisableSiteButton("st-inline-secondary-action")}</div>`;
-  }
-
   const actions = [renderDisableSiteButton("st-inline-secondary-action")];
-  if (payload.ttsEnabled) {
+  if (payload?.ttsEnabled) {
     actions.push(`
       <button class="st-inline-icon-action" data-action="play-inline" type="button" aria-label="播放原文" title="播放原文">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -700,13 +700,21 @@ function renderInlineActionBar(payload) {
       </button>
     `);
   }
-  if (payload.dictionary) {
+  if (payload?.dictionary) {
     actions.push(`
       <button class="st-inline-secondary-action" data-action="toggle-dictionary" type="button" aria-expanded="false">
         查看词典
       </button>
     `);
   }
+  actions.push(`
+    <button class="st-inline-icon-action" data-action="close-inline" type="button" aria-label="关闭译文" title="关闭译文">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 7L17 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        <path d="M17 7L7 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+      </svg>
+    </button>
+  `);
 
   return `<div class="st-inline-actions">${actions.join("")}</div>`;
 }
@@ -777,6 +785,13 @@ function bindInlineTranslationActions(node, payload) {
   if (!(node instanceof Element)) {
     return;
   }
+
+  node.querySelector("[data-action='close-inline']")?.addEventListener("click", () => {
+    if (currentSpeechHost === node) {
+      stopSpeech();
+    }
+    node.remove();
+  });
 
   if (!payload) {
     return;
@@ -1469,12 +1484,6 @@ function bindActions(panel, payload) {
     const nextState = panel.dataset.paneState === "collapsed" ? "open" : "collapsed";
     setPanelPaneState(panel, nextState);
   });
-  panel.querySelector("[data-action='close-pane']")?.addEventListener("click", () => {
-    setPanelPaneState(panel, "closed");
-  });
-  panel.querySelector("[data-action='reopen-pane']")?.addEventListener("click", () => {
-    setPanelPaneState(panel, "open");
-  });
   panel.querySelector("[data-action='open-settings']")?.addEventListener("click", async () => {
     try {
       await chrome.runtime.openOptionsPage();
@@ -1543,10 +1552,7 @@ function renderLoading(text, options = {}) {
       </div>
       <div class="st-head-actions">
         <button class="st-mini-action" data-action="toggle-pane" aria-label="收起右侧" title="收起右侧">⇢</button>
-        <button class="st-mini-action" data-action="close-pane" aria-label="关闭右侧" title="关闭右侧">⊟</button>
-        <button class="st-mini-action" data-action="reopen-pane" aria-label="打开右侧" title="打开右侧">⟫</button>
-        <button class="st-mini-action" data-action="reset-position" aria-label="Reset position" title="恢复自动定位">↺</button>
-        <button class="st-close" data-action="close" aria-label="Close">×</button>
+        <button class="st-close" data-action="close" aria-label="关闭面板" title="关闭面板">×</button>
       </div>
     </div>
     <section class="st-dock-body">
@@ -1578,10 +1584,7 @@ function renderError(text, error, options = {}) {
       </div>
       <div class="st-head-actions">
         <button class="st-mini-action" data-action="toggle-pane" aria-label="收起右侧" title="收起右侧">⇢</button>
-        <button class="st-mini-action" data-action="close-pane" aria-label="关闭右侧" title="关闭右侧">⊟</button>
-        <button class="st-mini-action" data-action="reopen-pane" aria-label="打开右侧" title="打开右侧">⟫</button>
-        <button class="st-mini-action" data-action="reset-position" aria-label="Reset position" title="恢复自动定位">↺</button>
-        <button class="st-close" data-action="close" aria-label="Close">×</button>
+        <button class="st-close" data-action="close" aria-label="关闭面板" title="关闭面板">×</button>
       </div>
     </div>
     <section class="st-dock-body">
@@ -1636,10 +1639,7 @@ function renderResults(text, payload) {
       </div>
       <div class="st-head-actions">
         <button class="st-mini-action" data-action="toggle-pane" aria-label="收起右侧" title="收起右侧">⇢</button>
-        <button class="st-mini-action" data-action="close-pane" aria-label="关闭右侧" title="关闭右侧">⊟</button>
-        <button class="st-mini-action" data-action="reopen-pane" aria-label="打开右侧" title="打开右侧">⟫</button>
-        <button class="st-mini-action" data-action="reset-position" aria-label="Reset position" title="恢复自动定位">↺</button>
-        <button class="st-close" data-action="close" aria-label="Close">×</button>
+        <button class="st-close" data-action="close" aria-label="关闭面板" title="关闭面板">×</button>
       </div>
     </div>
     <section class="st-dock-body">
@@ -1750,7 +1750,7 @@ function renderDictionary(dictionary) {
 
 function initializePanelLayout(panel) {
   if (!panel.dataset.paneState) {
-    panel.dataset.paneState = dockLayoutState.paneState || "open";
+    panel.dataset.paneState = getDefaultDockPaneState();
   }
   if (!panel.style.getPropertyValue("--st-dock-width")) {
     panel.style.setProperty("--st-dock-width", `${clampDockWidth(dockLayoutState.width || DOCK_OPEN_WIDTH)}px`);
@@ -1762,8 +1762,7 @@ function initializePanelLayout(panel) {
 function syncPaneControls(panel) {
   const paneState = panel.dataset.paneState || "open";
   const toggleButton = panel.querySelector("[data-action='toggle-pane']");
-  const reopenButton = panel.querySelector("[data-action='reopen-pane']");
-  const closeButton = panel.querySelector("[data-action='close-pane']");
+  const closeButton = panel.querySelector("[data-action='close']");
 
   if (toggleButton) {
     if (paneState === "collapsed") {
@@ -1777,20 +1776,15 @@ function syncPaneControls(panel) {
     }
   }
 
-  if (reopenButton) {
-    reopenButton.title = "打开右侧";
-    reopenButton.setAttribute("aria-label", "打开右侧");
-  }
-
   if (closeButton) {
-    closeButton.title = "关闭右侧";
-    closeButton.setAttribute("aria-label", "关闭右侧");
+    closeButton.title = "关闭面板";
+    closeButton.setAttribute("aria-label", "关闭面板");
   }
 }
 
 function setPanelPaneState(panel, paneState) {
   panel.dataset.paneState = paneState;
-  dockLayoutState.paneState = paneState;
+  dockLayoutState.paneState = paneState === "closed" ? "open" : paneState;
   if (paneState === "open") {
     const currentWidth = parseFloat(panel.style.getPropertyValue("--st-dock-width")) || DOCK_OPEN_WIDTH;
     const nextWidth = clampDockWidth(currentWidth);
@@ -1810,7 +1804,7 @@ function clampDockWidth(desiredWidth) {
 function getPanelDockWidth(panel) {
   const paneState = panel.dataset.paneState || "open";
   if (paneState === "closed") {
-    return 0;
+    return DOCK_CLOSED_WIDTH;
   }
   if (paneState === "collapsed") {
     return DOCK_COLLAPSED_WIDTH;
@@ -1874,6 +1868,10 @@ async function persistDockLayoutState() {
 
 function normalizeDockPaneState(value) {
   return value === "collapsed" || value === "closed" ? value : "open";
+}
+
+function getDefaultDockPaneState() {
+  return dockLayoutState.paneState === "closed" ? "open" : normalizeDockPaneState(dockLayoutState.paneState);
 }
 
 function applyDockCompensation(width) {
@@ -2506,11 +2504,11 @@ function injectStyles() {
       overflow: hidden;
     }
     #${PANEL_ID}[data-pane-state="closed"] {
-      width: 0;
-      padding: 0;
-      border-left: 0;
+      width: ${DOCK_CLOSED_WIDTH}px;
+      padding: 16px 8px;
       overflow: hidden;
-      box-shadow: none;
+      box-shadow:
+        -10px 0 26px rgba(25, 46, 88, 0.08);
     }
     #${PANEL_ID} * {
       box-sizing: border-box;
@@ -2680,6 +2678,36 @@ function injectStyles() {
     #${PANEL_ID}[data-pane-state="closed"] .st-divider {
       display: none;
     }
+    #${PANEL_ID}[data-pane-state="closed"] .st-head {
+      margin-bottom: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      justify-content: center;
+    }
+    #${PANEL_ID}[data-pane-state="closed"] .st-drag-handle,
+    #${PANEL_ID}[data-pane-state="closed"] .st-dock-body,
+    #${PANEL_ID}[data-pane-state="closed"] [data-action="toggle-pane"],
+    #${PANEL_ID}[data-pane-state="closed"] [data-action="close-pane"],
+    #${PANEL_ID}[data-pane-state="closed"] [data-action="reset-position"],
+    #${PANEL_ID}[data-pane-state="closed"] [data-action="close"] {
+      display: none;
+    }
+    #${PANEL_ID}[data-pane-state="closed"] .st-head-actions {
+      width: 100%;
+      justify-content: center;
+    }
+    #${PANEL_ID}[data-pane-state="closed"] [data-action="reopen-pane"] {
+      display: inline-flex;
+      width: 28px;
+      height: 72px;
+      border-radius: 999px;
+      border-color: rgba(37, 99, 235, 0.18);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 246, 255, 0.94));
+      color: var(--st-accent-strong);
+      box-shadow: 0 10px 18px rgba(37, 99, 235, 0.12);
+    }
     #${PANEL_ID}[data-pane-state="collapsed"] {
       width: ${DOCK_COLLAPSED_WIDTH}px;
       padding: 16px 8px;
@@ -2695,10 +2723,6 @@ function injectStyles() {
     }
     #${PANEL_ID}[data-pane-state="open"] [data-action="reopen-pane"],
     #${PANEL_ID}[data-pane-state="collapsed"] [data-action="reopen-pane"] {
-      display: none;
-    }
-    #${PANEL_ID}[data-pane-state="closed"] [data-action="toggle-pane"],
-    #${PANEL_ID}[data-pane-state="closed"] [data-action="close-pane"] {
       display: none;
     }
     #${PANEL_ID} .st-tabs {
