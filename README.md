@@ -21,7 +21,7 @@
 
 ## 版本信息
 
-- Current version: `0.1.0`
+- Current version: `0.1.1`
 - Status: `Active development`
 
 ## 主要能力
