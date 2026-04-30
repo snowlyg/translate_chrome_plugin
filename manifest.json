@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "极简翻译",
   "description": "Select a word or sentence on any page and translate it with multiple translation sources.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "permissions": [
     "storage",
     "contextMenus",
